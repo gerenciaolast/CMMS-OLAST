@@ -148,6 +148,21 @@ Luego seguir el orden de sprints del [doc 06](06-alcance-roles-y-roadmap.md#3-ho
 | Tablero de KPIs + Pareto + malos actores | Gerencia, jefe | Escritorio |
 | Configuración (catálogos, usuarios, sedes, checklists) | Administrador | Escritorio |
 
+## 7.1 Identidad visual (Manual de marca OLAST, mar-2026)
+
+| Elemento | Regla | Implementación |
+|---|---|---|
+| Paleta | `#ffffff` · `#82ceed` celeste · `#1275a3` · `#0b5e85` azul principal · `#054e74` azul oscuro · `#232323` texto | Tokens en `apps/web/src/app/globals.css` (`brand`, `brand-600`, `brand-800`, `sky`, `ink`) |
+| Tipografía | Poppins (Regular y Bold) | `next/font/google`, variable `--font-poppins` |
+| Logo a color (degradado azul) | **Solo sobre fondo blanco** | `<OlastLogo variant="color" />` |
+| Logo blanco (invertido) | Sobre fondos oscuros o de color corporativo | `<OlastLogo variant="blanco" />` (menú lateral, login) |
+| Usos prohibidos | Cambiar colores, contornear, encerrar en círculo, deformar, rotar, separar símbolo y texto | El componente fija la proporción (`object-contain`); no usar `<img>` sueltos del logo |
+| Recurso gráfico | Curva celeste sobre fondo azul corporativo | Onda del login |
+
+- Archivos en `apps/web/public/brand/` (extraídos del manual sin alterar el trazo). El ícono de la app (`icon-192/512.png`) es el símbolo blanco sobre azul `#0b5e85`, que es un uso permitido: fondo de color corporativo, sin círculo.
+- Los colores de estado (verde OK, ámbar alerta, rojo peligro) son funcionales del CMMS y no reemplazan la paleta de marca.
+- El manual en PDF no se sube al repositorio.
+
 ## 8. Migración de datos iniciales
 
 Plantillas de importación (CSV/Excel) con validación previa y reporte de errores por fila, para:

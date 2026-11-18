@@ -53,7 +53,7 @@ export default function Home() {
         <ol className="space-y-3">
           {ROADMAP.map(([s, t, d]) => (
             <li key={s} className="flex gap-3">
-              <span className="h-6 shrink-0 rounded bg-accent/20 px-2 text-sm font-semibold text-warn">{s}</span>
+              <span className="h-6 shrink-0 rounded bg-sky/30 px-2 text-sm font-semibold text-brand-800">{s}</span>
               <div>
                 <p className="font-medium">{t}</p>
                 <p className="text-sm text-muted">{d}</p>

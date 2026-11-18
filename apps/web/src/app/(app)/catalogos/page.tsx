@@ -61,7 +61,7 @@ export default function CatalogPage() {
                 <ChevronRight size={18} className={`transition ${open === s.code ? 'rotate-90' : ''}`} aria-hidden />
                 <code className="w-12 font-semibold">{s.code}</code>
                 <span className="flex-1 font-medium">{s.name}</span>
-                {s.vmrsCode && <span className="text-xs text-muted">VMRS {s.vmrsCode}</span>}
+                {s.vmrsCode && <span className="rounded bg-sky/25 px-1.5 text-xs text-brand-800">VMRS {s.vmrsCode}</span>}
               </button>
               {open === s.code && (
                 <div className="space-y-3 border-t border-line p-4">

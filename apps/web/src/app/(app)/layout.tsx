@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { LogOut, Menu, X } from 'lucide-react';
 import { useSession } from '@/lib/session';
 import { NAV } from '@/lib/nav';
+import { OlastLogo } from '@/components/brand';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { me, loading, logout, can } = useSession();
@@ -30,10 +31,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <>
             <Icon size={18} aria-hidden />
             <span className="flex-1">{n.label}</span>
-            {n.sprint && <span className="rounded bg-line px-1.5 text-[11px] text-muted">{n.sprint}</span>}
+            {n.sprint && <span className="rounded bg-white/15 px-1.5 text-[11px] text-white/80">{n.sprint}</span>}
           </>
         );
-        const cls = `flex h-10 items-center gap-3 rounded-lg px-3 text-sm ${active ? 'bg-brand text-white' : 'hover:bg-line/60'}`;
+        const cls = `flex h-10 items-center gap-3 rounded-lg border-l-4 px-3 text-sm ${
+          active ? 'border-sky bg-white/15 font-semibold text-white' : 'border-transparent text-white/85 hover:bg-white/10'
+        }`;
         return n.sprint ? (
           <span key={n.href} className={`${cls} cursor-not-allowed opacity-60`} title={`Disponible en el sprint ${n.sprint}`}>
             {content}
@@ -49,18 +52,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[240px_1fr]">
-      <aside className="hidden border-r border-line bg-surface p-4 md:block">
-        <div className="mb-6 flex items-center gap-2 font-bold">
-          <img src="/icon.svg" alt="" className="h-8 w-8" /> CMMS OLAST
+      <aside className="hidden bg-gradient-to-b from-brand-800 to-brand p-4 md:block">
+        <div className="mb-2 px-2 pt-1">
+          <OlastLogo variant="blanco" height={30} className="h-8 w-auto" />
         </div>
+        <p className="mb-6 px-2 text-xs tracking-wide text-sky uppercase">CMMS · Flota</p>
         {nav}
       </aside>
       <div className="min-w-0">
-        <header className="flex h-14 items-center gap-3 border-b border-line bg-surface px-4">
+        <header className="flex h-14 items-center gap-3 border-b border-line bg-white px-4">
           <button className="md:hidden" aria-label="Menú" onClick={() => setOpen(!open)}>
             {open ? <X /> : <Menu />}
           </button>
-          <div className="min-w-0 flex-1 truncate text-sm">
+          <OlastLogo variant="color" height={22} className="h-6 w-auto md:hidden" />
+          <div className="min-w-0 flex-1 truncate text-right text-sm md:text-left">
             <span className="font-semibold">{me.fullName}</span>
             <span className="text-muted"> · {me.role.name}</span>
           </div>
@@ -74,7 +79,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <LogOut size={16} /> Salir
           </button>
         </header>
-        {open && <div className="border-b border-line bg-surface p-3 md:hidden">{nav}</div>}
+        {open && <div className="bg-brand-800 p-3 md:hidden">{nav}</div>}
         <main className="mx-auto max-w-6xl p-4 md:p-6">{children}</main>
       </div>
     </div>
