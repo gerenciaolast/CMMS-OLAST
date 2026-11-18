@@ -1,0 +1,15 @@
+{
+  "name": "@cmms/domain",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src test",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": { "@cmms/shared": "workspace:*" },
+  "devDependencies": { "typescript": "~5.7.3", "vitest": "^3.0.0", "@vitest/coverage-v8": "^3.0.0" }
+}

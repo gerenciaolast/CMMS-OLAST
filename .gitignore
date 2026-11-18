@@ -6,3 +6,10 @@ data/historico/
 .env.*
 !.env.example
 __pycache__/
+node_modules/
+dist/
+.next/
+coverage/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts

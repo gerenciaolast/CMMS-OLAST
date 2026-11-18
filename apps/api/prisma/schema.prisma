@@ -1,0 +1,259 @@
+// CMMS-OLAST · Esquema Sprint 0 (doc 04). Convención: modelos PascalCase, tablas snake_case plural.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────── Organización y seguridad ─────────────
+
+model Organization {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  taxId         String?  @map("tax_id")
+  countryCode   String   @default("CO") @map("country_code") @db.Char(2)
+  currency      String   @default("COP") @db.Char(3)
+  distanceUnit  String   @default("km") @map("distance_unit")
+  volumeUnit    String   @default("gal") @map("volume_unit")
+  timezone      String   @default("America/Bogota")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  sites Site[]
+  users User[]
+  roles Role[]
+
+  @@map("organizations")
+}
+
+model Site {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  city           String?
+  address        String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  userSites    UserSite[]
+
+  @@unique([organizationId, code])
+  @@map("sites")
+}
+
+model Role {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  /// Rol global: ve todas las sedes. Si es false, el usuario ve solo sus sedes asignadas.
+  isGlobal       Boolean  @default(false) @map("is_global")
+  permissions    String[]
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  users        User[]
+
+  @@unique([organizationId, code])
+  @@map("roles")
+}
+
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @map("organization_id") @db.Uuid
+  roleId             String    @map("role_id") @db.Uuid
+  email              String
+  fullName           String    @map("full_name")
+  phone              String?
+  passwordHash       String    @map("password_hash")
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  active             Boolean   @default(true)
+  failedLogins       Int       @default(0) @map("failed_logins")
+  lockedUntil        DateTime? @map("locked_until") @db.Timestamptz
+  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  role          Role           @relation(fields: [roleId], references: [id])
+  sites         UserSite[]
+  refreshTokens RefreshToken[]
+
+  @@unique([organizationId, email])
+  @@map("users")
+}
+
+model UserSite {
+  userId String @map("user_id") @db.Uuid
+  siteId String @map("site_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@id([userId, siteId])
+  @@map("user_sites")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id             BigInt   @id @default(autoincrement())
+  organizationId String?  @map("organization_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  entity         String
+  entityId       String?  @map("entity_id")
+  action         String
+  diff           Json?
+  ip             String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+// ───────────── Catálogos (doc 03 y doc 09) ─────────────
+
+model ComponentCode {
+  id        String  @id @default(uuid()) @db.Uuid
+  code      String  @unique
+  name      String
+  level     Int
+  parentId  String? @map("parent_id") @db.Uuid
+  vmrsCode  String? @map("vmrs_code")
+  /// Patrón de texto para clasificar historial (migración).
+  matchPattern String? @map("match_pattern")
+  active    Boolean @default(true)
+
+  parent   ComponentCode?  @relation("ComponentTree", fields: [parentId], references: [id])
+  children ComponentCode[] @relation("ComponentTree")
+
+  @@index([parentId])
+  @@map("component_codes")
+}
+
+model FailureMode {
+  code   String  @id
+  name   String
+  active Boolean @default(true)
+
+  @@map("failure_modes")
+}
+
+model FailureCause {
+  code   String  @id
+  name   String
+  active Boolean @default(true)
+
+  @@map("failure_causes")
+}
+
+model RepairAction {
+  code   String  @id
+  name   String
+  active Boolean @default(true)
+
+  @@map("repair_actions")
+}
+
+model HoldReason {
+  code   String  @id
+  name   String
+  active Boolean @default(true)
+
+  @@map("hold_reasons")
+}
+
+model WorkOrderTypeDef {
+  code        String  @id
+  name        String
+  isPlanned   Boolean @map("is_planned")
+  requiresFailureCoding Boolean @map("requires_failure_coding")
+  description String?
+
+  @@map("work_order_types")
+}
+
+model PriorityDef {
+  code                 String @id
+  name                 String
+  targetResponseHours  Int    @map("target_response_hours")
+  targetResolutionHours Int   @map("target_resolution_hours")
+
+  @@map("priorities")
+}
+
+model VehicleType {
+  id             String  @id @default(uuid()) @db.Uuid
+  code           String  @unique
+  name           String
+  primaryMeter   String  @default("odometer") @map("primary_meter")
+  maxDailyUsage  Int     @map("max_daily_usage")
+  active         Boolean @default(true)
+
+  checklistTemplates ChecklistTemplate[]
+
+  @@map("vehicle_types")
+}
+
+model DocumentType {
+  id         String  @id @default(uuid()) @db.Uuid
+  code       String  @unique
+  name       String
+  isBlocking Boolean @default(false) @map("is_blocking")
+  alertDays  Int[]   @default([30, 15, 7]) @map("alert_days")
+  active     Boolean @default(true)
+
+  @@map("document_types")
+}
+
+model ChecklistTemplate {
+  id            String  @id @default(uuid()) @db.Uuid
+  vehicleTypeId String  @map("vehicle_type_id") @db.Uuid
+  name          String
+  kind          String  @default("pre_trip")
+  version       Int     @default(1)
+  active        Boolean @default(true)
+
+  vehicleType VehicleType     @relation(fields: [vehicleTypeId], references: [id])
+  items       ChecklistItem[]
+
+  @@unique([vehicleTypeId, kind, version])
+  @@map("checklist_templates")
+}
+
+model ChecklistItem {
+  id                  String  @id @default(uuid()) @db.Uuid
+  checklistTemplateId String  @map("checklist_template_id") @db.Uuid
+  sequence            Int
+  text                String
+  componentCode       String? @map("component_code")
+  isCritical          Boolean @default(false) @map("is_critical")
+  requiresPhotoOnFail Boolean @default(false) @map("requires_photo_on_fail")
+
+  template ChecklistTemplate @relation(fields: [checklistTemplateId], references: [id], onDelete: Cascade)
+
+  @@map("checklist_items")
+}

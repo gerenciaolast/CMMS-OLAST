@@ -2,7 +2,7 @@
 
 Sistema de Gestión de Mantenimiento Computarizado (CMMS) para la flota de vehículos de **OLAST**.
 
-> **Estado:** Modelo de mantenimiento y confiabilidad v0.1 — **propuesta para aprobación**. El desarrollo inicia una vez aprobado el modelo (ver [docs/08](docs/08-decisiones-pendientes.md)).
+> **Estado:** modelo aprobado por gerencia · **Sprint 0 (fundaciones) terminado** · siguiente: Sprint 1, flota y lecturas.
 
 ## Objetivo
 
@@ -29,3 +29,38 @@ Basado en ISO 55000, EN 13306, ISO 14224, VMRS (ATA/TMC), SAE JA1011 (RCM), mét
 | 09 | [Catálogo de componentes y análisis del historial](docs/09-catalogo-componentes-y-analisis-historial.md) | Catálogo OLAST (22 sistemas, 106 componentes, compatible con VMRS), hallazgos del historial 2024–2026 |
 
 Datos semilla en [`data/catalogos/`](data/catalogos/) · herramienta de migración en [`tools/`](tools/).
+
+## Desarrollo
+
+Monorepo TypeScript (pnpm + Turborepo). Arquitectura y convenciones en [docs/07](docs/07-guia-de-desarrollo.md).
+
+| Paquete | Qué es |
+|---|---|
+| `packages/domain` | Reglas de negocio puras (criticidad, prioridad, lecturas, vencimientos PM, máquina de estados de OT, retrabajo, KPI) con sus pruebas |
+| `packages/shared` | Enumeraciones, permisos y roles compartidos |
+| `apps/api` | API REST NestJS + Prisma/PostgreSQL · Swagger en `/api/docs` |
+| `apps/web` | App web Next.js (PWA, funciona en celular y escritorio) |
+
+### Arranque local
+
+```bash
+corepack enable && pnpm install
+docker compose up -d                      # PostgreSQL, MinIO y Mailpit (o use un PostgreSQL 16 propio)
+cp apps/api/.env.example apps/api/.env    # complete JWT_SECRET y SEED_ADMIN_PASSWORD
+cp apps/web/.env.example apps/web/.env.local
+pnpm --filter @cmms/api prisma:deploy     # aplica migraciones
+pnpm db:seed                              # catálogos, sedes, roles y usuario administrador
+pnpm dev                                  # API en :3001 · web en :3000
+```
+
+El primer ingreso del administrador obliga a cambiar la contraseña.
+
+### Calidad
+
+```bash
+pnpm lint && pnpm typecheck && pnpm test && pnpm build   # lo mismo que corre CI en cada PR
+```
+
+Las pruebas de la API usan una base aparte (`TEST_DATABASE_URL`, por defecto `cmms_test` local) y **no la borran**: aplican migraciones pendientes y usan datos únicos por ejecución.
+
+> ⚠️ Este repositorio es **público**: nunca suba archivos `.env`, credenciales (Ituran, base de datos), ni el historial con placas y costos.
