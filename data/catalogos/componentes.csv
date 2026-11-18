@@ -1,0 +1,181 @@
+codigo,nivel,padre,sistema,conjunto,componente,frecuencia_historica_correctivo,frecuencia_historica_preventivo,patron_clasificacion
+MOT.LUB,2,MOT,Motor,Lubricación,,,,
+MOT.LUB.ACE,3,MOT.LUB,Motor,Lubricación,Aceite de motor,8,192,\baceite\b(?!\s+(de\s+)?(la\s+)?(caja|transmision|diferencial))|cuartos de aceite
+MOT.LUB.FAC,3,MOT.LUB,Motor,Lubricación,Filtro de aceite,7,187,filtros?\s+(de\s+)?aceite|filtro motor|filtros? isuzu|kit\s+(de\s+)?filtr|\bfiltros\b|kit filtracion|aceite y filtro\b|cambio de filtro\b
+MOT.LUB.TAP,3,MOT.LUB,Motor,Lubricación,Tapón/empaque de drenaje del cárter,1,29,tapon\s+(de\s+)?(drenaje\s+)?(carter|aceite)|tapon drenaje|arandela tapon|empaque tapon|tapo drenaje
+MOT.BLQ,2,MOT,Motor,Bloque y cárter,,,,
+MOT.BLQ.CAR,3,MOT.BLQ,Motor,Bloque y cárter,Cárter / empaque de cárter,3,0,empaque carter|rosca de carter|enfriador|base filtro
+MOT.BLQ.SEL,3,MOT.BLQ,Motor,Bloque y cárter,Retenedor de cigüeñal,5,0,cigueñal|ciguenal
+MOT.BLQ.OVH,3,MOT.BLQ,Motor,Bloque y cárter,Reparación mayor / cambio de motor,4,2,reparacion (parcial )?(del |de )?motor|cambio de motor por|kit motor|piston|camis|casquete|rectificadora
+MOT.CUL,2,MOT,Motor,Culata y válvulas,,,,
+MOT.CUL.EMP,3,MOT.CUL,Motor,Culata y válvulas,Empaques de culata / tapa de válvulas,5,0,empaque culata|empaquetadura(?! multiple)|tapa valvulas|cubierta culata|sello valvulas|guias valvulas|juego de valvulas
+MOT.CUL.PCV,3,MOT.CUL,Motor,Culata y válvulas,Válvula PCV / ventilación del cárter,1,2,\bpcv\b|filtro ventilacion
+MOT.SOP,2,MOT,Motor,Soportes,,,,
+MOT.SOP.SOP,3,MOT.SOP,Motor,Soportes,Soporte de motor,3,0,soporte (de |para )?motor|barra soporte motor
+MOT.ACC,2,MOT,Motor,Accionamiento de accesorios,,,,
+MOT.ACC.COR,3,MOT.ACC,Motor,Accionamiento de accesorios,Correa de accesorios,13,8,\bcorreas?\b|\bcorra\b|\bcorreo\b|correra
+MOT.ACC.TEN,3,MOT.ACC,Motor,Accionamiento de accesorios,Tensor / patín de correa,2,0,tensor correa|patin|patn
+MOT.ACC.BAL,3,MOT.ACC,Motor,Accionamiento de accesorios,Polea balanceadora,1,0,balanceador\b
+ADM.FIL,2,ADM,Admisión y sobrealimentación,Filtrado de aire,,,,
+ADM.FIL.AIR,3,ADM.FIL,Admisión y sobrealimentación,Filtrado de aire,Filtro de aire,0,15,filtros?\s+(de\s+)?aire(?!\s*acond)|filtro de ire|filtros aire
+ADM.TUR,2,ADM,Admisión y sobrealimentación,Sobrealimentación,,,,
+ADM.TUR.TUR,3,ADM.TUR,Admisión y sobrealimentación,Sobrealimentación,Turbocompresor,7,0,turbo(?!compresor\))
+ADM.TUR.INT,3,ADM.TUR,Admisión y sobrealimentación,Sobrealimentación,Intercooler,1,0,intercoler|intercooler
+ADM.MUL,2,ADM,Admisión y sobrealimentación,Múltiple y cuerpo de aceleración,,,,
+ADM.MUL.MUL,3,ADM.MUL,Admisión y sobrealimentación,Múltiple y cuerpo de aceleración,Múltiple de admisión,3,0,multiple( de)? admision|empaque multiple|empaquetadura multiple
+ADM.MUL.CUE,3,ADM.MUL,Admisión y sobrealimentación,Múltiple y cuerpo de aceleración,Cuerpo de aceleración / válvula IAC,4,0,cuerpo (de )?(admision|aceleracion)|\biac\b|carburador|acelerador
+ESC.EGR,2,ESC,"Escape, emisiones y freno de motor",Emisiones,,,,
+ESC.EGR.EGR,3,ESC.EGR,"Escape, emisiones y freno de motor",Emisiones,Válvula EGR,8,1,\begr\b
+ESC.DPF,2,ESC,"Escape, emisiones y freno de motor",Emisiones,,,,
+ESC.DPF.DPF,3,ESC.DPF,"Escape, emisiones y freno de motor",Emisiones,Filtro de partículas / trampa,1,1,filtro trampa|particulas
+ESC.SEN,2,ESC,"Escape, emisiones y freno de motor",Emisiones,,,,
+ESC.SEN.O2,3,ESC.SEN,"Escape, emisiones y freno de motor",Emisiones,Sensor de oxígeno,1,0,sensor de oxigeno
+ESC.TUB,2,ESC,"Escape, emisiones y freno de motor",Tubería y silenciador,,,,
+ESC.TUB.TUB,3,ESC.TUB,"Escape, emisiones y freno de motor",Tubería y silenciador,Exosto / catalizador,2,0,exosto|exhosto|catalizador|escape
+ESC.FRA,2,ESC,"Escape, emisiones y freno de motor",Freno de motor,,,,
+ESC.FRA.FRA,3,ESC.FRA,"Escape, emisiones y freno de motor",Freno de motor,Freno de ahogo (freno de motor),8,0,freno (de )?ahogo
+COM.TAN,2,COM,Combustible,Tanque y medición,,,,
+COM.TAN.TAN,3,COM.TAN,Combustible,Tanque y medición,Tanque de combustible,5,0,tanque( de)? combustible|taque combustible
+COM.TAN.FLO,3,COM.TAN,Combustible,Tanque y medición,Flotador / medidor de combustible,2,0,flotador|medidor combustible
+COM.FIL,2,COM,Combustible,Filtrado,,,,
+COM.FIL.FIL,3,COM.FIL,Combustible,Filtrado,Filtro de combustible,2,5,filtros?\s+(de\s+)?combust|prefiltro|orign|oring
+COM.INY,2,COM,Combustible,Inyección,,,,
+COM.INY.INY,3,COM.INY,Combustible,Inyección,Inyectores,4,1,inyector
+COM.INY.BOM,3,COM.INY,Combustible,Inyección,Bomba de inyección / bomba de combustible,2,0,bomba de inyeccion|pila combustible|sistema de inyeccion
+COM.INY.SCV,3,COM.INY,Combustible,Inyección,Válvula SCV / sensor de presión de combustible,3,0,\bscv\b|sensor presion combustible
+REF.RAD,2,REF,Refrigeración,Radiador,,,,
+REF.RAD.RAD,3,REF.RAD,Refrigeración,Radiador,Radiador,10,0,radiador|radiagos
+REF.RAD.MAN,3,REF.RAD,Refrigeración,Radiador,Mangueras y abrazaderas,7,0,mangu?eras? (de )?(agua |sistema de refrigeracion|radiador)|manguera radiador|maguera radiador|manguera refrigeracion|abrazaderas?\b(?! metalica)(?! cremallera)(?! y bujes)
+REF.RAD.DEP,3,REF.RAD,Refrigeración,Radiador,Depósito / tapa,4,0,deposito|tapa del radiador
+REF.LIQ,2,REF,Refrigeración,Líquido,,,,
+REF.LIQ.REF,3,REF.LIQ,Refrigeración,Líquido,Refrigerante,24,13,refrig|refigerante|refrigerente
+REF.TER,2,REF,Refrigeración,Control de temperatura,,,,
+REF.TER.TER,3,REF.TER,Refrigeración,Control de temperatura,Termostato,6,0,termostato
+REF.BOM,2,REF,Refrigeración,Bomba de agua,,,,
+REF.BOM.BOM,3,REF.BOM,Refrigeración,Bomba de agua,Bomba de agua,4,0,bomba (de )?agua
+REF.VEN,2,REF,Refrigeración,Ventilador,,,,
+REF.VEN.VEN,3,REF.VEN,Refrigeración,Ventilador,Ventilador / fan clutch / motor ventilador,4,1,motor ventilador|fan clutch|cambio de ventilador
+ELE.BAT,2,ELE,"Eléctrico: arranque, carga y cableado",Baterías,,,,
+ELE.BAT.BAT,3,ELE.BAT,"Eléctrico: arranque, carga y cableado",Baterías,Batería,8,3,bateria
+ELE.BAT.BOR,3,ELE.BAT,"Eléctrico: arranque, carga y cableado",Baterías,Bornes / torre de batería,2,0,bornes|bortes|torre de bateria
+ELE.CAR,2,ELE,"Eléctrico: arranque, carga y cableado",Carga,,,,
+ELE.CAR.ALT,3,ELE.CAR,"Eléctrico: arranque, carga y cableado",Carga,Alternador,5,1,alternador(?! y)|alternador\b
+ELE.ARR,2,ELE,"Eléctrico: arranque, carga y cableado",Arranque,,,,
+ELE.ARR.ARR,3,ELE.ARR,"Eléctrico: arranque, carga y cableado",Arranque,Motor de arranque / bendix,2,0,arranque|bendix
+ELE.CAB,2,ELE,"Eléctrico: arranque, carga y cableado",Distribución eléctrica,,,,
+ELE.CAB.CAB,3,ELE.CAB,"Eléctrico: arranque, carga y cableado",Distribución eléctrica,Cableado / fusibles,9,1,cableado|fusible|corto electrico|revision electrica|reparacion electrica|arreglo electrico|sistema electrico|convertidor
+ELN.ECU,2,ELN,Electrónica y diagnóstico,Control electrónico,,,,
+ELN.ECU.ECU,3,ELN.ECU,Electrónica y diagnóstico,Control electrónico,ECU / reprogramación,1,0,computador|reprogramacion
+ELN.SEN,2,ELN,Electrónica y diagnóstico,Sensores,,,,
+ELN.SEN.SEN,3,ELN.SEN,Electrónica y diagnóstico,Sensores,Sensores de motor y vehículo,5,1,"sensor (de )?(velocidad|detonacion|eje de levas)|\bcmp\b|sensor reversa|sensor rueda|cambio sensor,"
+ELN.DIA,2,ELN,Electrónica y diagnóstico,Diagnóstico,,,,
+ELN.DIA.ESC,3,ELN.DIA,Electrónica y diagnóstico,Diagnóstico,Escaneo / diagnóstico electrónico,6,1,escaner|escaneo|scaneo
+ELN.ALA,2,ELN,Electrónica y diagnóstico,Accesorios electrónicos,,,,
+ELN.ALA.ALA,3,ELN.ALA,Electrónica y diagnóstico,Accesorios electrónicos,Alarma / módulo,3,0,alarma
+ILU.LUC,2,ILU,Iluminación y señalización,Luces,,,,
+ILU.LUC.EXT,3,ILU.LUC,Iluminación y señalización,Luces,Bombillos y luces exteriores,22,6,bombillo|luces|luz|farola|exploradora|stop|lampara|soquet|direccional|cocullo|estacionarias|pastos
+ILU.SEN,2,ILU,Iluminación y señalización,Señalización,,,,
+ILU.SEN.FLA,3,ILU.SEN,Iluminación y señalización,Señalización,Flasher / interruptores,4,0,flasher|interruptor|swicht
+ILU.SEN.PIT,3,ILU.SEN,Iluminación y señalización,Señalización,Bocina / pito de reversa / sirena,5,1,\bpito\b|bocina|sirena
+EMB.KIT,2,EMB,Embrague,Conjunto de embrague,,,,
+EMB.KIT.KIT,3,EMB.KIT,Embrague,Conjunto de embrague,"Kit de embrague (disco, prensa, balinera)",11,0,(kit|kid)( de)? embrague|prensa|kit de emabrague
+EMB.ACC,2,EMB,Embrague,Accionamiento,,,,
+EMB.ACC.GUA,3,EMB.ACC,Embrague,Accionamiento,Guaya de embrague / clutch,3,2,guaya (de )?(embrague|clutch)|guaya de control|revision de guaya$|revision de guaya
+EMB.ACC.BOM,3,EMB.ACC,Embrague,Accionamiento,Bomba de embrague / auxiliar,1,0,bomba embrague|bomba auxiliar
+EMB.ACC.AJU,3,EMB.ACC,Embrague,Accionamiento,Ajuste / graduación de embrague,5,2,(graduacion|ajuste|calibracion|tension)( del?)? (pedal del )?(embrague|emabrague|clutch)|tension guaya embrague
+EMB.VOL,2,EMB,Embrague,Volante,,,,
+EMB.VOL.ROD,3,EMB.VOL,Embrague,Volante,Rodamiento de volante,1,0,rodamiento volante
+TRA.CAJ,2,TRA,Caja de velocidades,Caja de velocidades,,,,
+TRA.CAJ.CAJ,3,TRA.CAJ,Caja de velocidades,Caja de velocidades,Caja de velocidades (reparación/cambio),7,1,(?<!aceite de )cajas? de +(velocidades|cambios?|transmision|cambio)|caja velocidades|kit bronce|pin reversa|velciodiades
+TRA.CAJ.ACE,3,TRA.CAJ,Caja de velocidades,Caja de velocidades,Aceite de caja / valvulina,5,11,aceite (de )?(la )?caja|valvulina|aceite caja
+TRA.CON,2,TRA,Caja de velocidades,Control de cambios,,,,
+TRA.CON.TRA,3,TRA.CON,Caja de velocidades,Control de cambios,Trapecio / selector de cambios,2,0,trapecio|selector
+TRE.CAR,2,TRE,"Tren motriz (cardán, diferencial, ejes)",Cardán,,,,
+TRE.CAR.CRU,3,TRE.CAR,"Tren motriz (cardán, diferencial, ejes)",Cardán,Cruceta / cardán,12,2,cruceta|cruzeta|cruzata|cardan|cardam
+TRE.DIF,2,TRE,"Tren motriz (cardán, diferencial, ejes)",Diferencial,,,,
+TRE.DIF.ACE,3,TRE.DIF,"Tren motriz (cardán, diferencial, ejes)",Diferencial,Aceite de diferencial,1,12,aceite (de )?(transmision|diferencial)|diferencial
+TRE.EJE,2,TRE,"Tren motriz (cardán, diferencial, ejes)",Eje trasero,,,,
+TRE.EJE.SEM,3,TRE.EJE,"Tren motriz (cardán, diferencial, ejes)",Eje trasero,Semieje / rodamientos y retenedores de semieje,3,0,semieje|chaveta eje
+FRN.FRI,2,FRN,Frenos,Fricción,,,,
+FRN.FRI.PAS,3,FRN.FRI,Frenos,Fricción,Pastillas de freno,7,0,pastilla
+FRN.FRI.DIS,3,FRN.FRI,Frenos,Fricción,Discos de freno,2,0,discos? (de freno|delanteros|trasero)
+FRN.FRI.BAN,3,FRN.FRI,Frenos,Fricción,Bandas / zapatas,28,3,banda|zapata|conjuntos de friccion|remach|recalz
+FRN.FRI.CAM,3,FRN.FRI,Frenos,Fricción,Campanas,6,0,campana
+FRN.HID,2,FRN,Frenos,Hidráulico,,,,
+FRN.HID.CIL,3,FRN.HID,Frenos,Hidráulico,Cilindros de rueda / chupas / guardapolvos,11,1,cilindro(?! de seguridad)|cinlindro|chupas|guarda ?polvos
+FRN.HID.LIQ,3,FRN.HID,Frenos,Hidráulico,Líquido de frenos / purga,3,8,liquidos? (de )?frenos|liqudio frenos|purga
+FRN.HID.MAN,3,FRN.HID,Frenos,Hidráulico,Mangueras de freno,1,0,manguera de freno
+FRN.VAC,2,FRN,Frenos,Asistencia de vacío,,,,
+FRN.VAC.VAC,3,FRN.VAC,Frenos,Asistencia de vacío,Bomba de vacío / mangueras de vacío,4,0,vacio
+FRN.AIR,2,FRN,Frenos,Asistencia neumática,,,,
+FRN.AIR.COM,3,FRN.AIR,Frenos,Asistencia neumática,Compresor de aire / culatín,4,0,\bcompresor\b|culatin
+FRN.AJU,2,FRN,Frenos,Ajuste,,,,
+FRN.AJU.GRA,3,FRN.AJU,Frenos,Ajuste,Graduación / tensión de frenos / trinquetes,11,41,(graduacion|graducacion|graduar|gradur|gradurar|grduar|graudar|tension|gradiacion)( de)?( los)? fr?enos|trinquete|graduador de frenos|revisionnfrenos|revision de frenos|limpiador (de )?f[r]?enos|sistema de frenado|verificacion del sistema de frenos|tension frenos
+FRN.EST,2,FRN,Frenos,Freno de estacionamiento,,,,
+FRN.EST.MAN,3,FRN.EST,Frenos,Freno de estacionamiento,Freno de mano / guaya,4,3,freno de mano|guaya( del)? freno|guaya frenos
+FRN.ABS,2,FRN,Frenos,ABS,,,,
+FRN.ABS.SEN,3,FRN.ABS,Frenos,ABS,Sensor / rotor ABS,5,0,\babs\b
+DIR.CAJ,2,DIR,Dirección,Caja / cremallera,,,,
+DIR.CAJ.CAJ,3,DIR.CAJ,Dirección,Caja / cremallera,Caja de dirección / cremallera,4,0,caja (de )?direc|cremallera(?!s)
+DIR.VAR,2,DIR,Dirección,Varillaje,,,,
+DIR.VAR.TER,3,DIR.VAR,Dirección,Varillaje,Terminales / brazos / barras,8,0,terminal|brazo (de )?direccion|brazo direccion|brazo axial|barra tensor
+DIR.EJE,2,DIR,Dirección,Eje delantero,,,,
+DIR.EJE.PIV,3,DIR.EJE,Dirección,Eje delantero,Pivotes (pines y bocines / splinder),7,0,splinder|esplinder|pines y bocines|kit pasadores ejes
+DIR.HID,2,DIR,Dirección,Asistencia hidráulica,,,,
+DIR.HID.BOM,3,DIR.HID,Dirección,Asistencia hidráulica,Bomba de dirección,1,3,bomba direccion|direccion hidraulica completa
+DIR.VOL,2,DIR,Dirección,Columna,,,,
+DIR.VOL.VOL,3,DIR.VOL,Dirección,Columna,Volante,1,0,ajuste volante
+SUS.AMO,2,SUS,Suspensión,Amortiguación,,,,
+SUS.AMO.AMO,3,SUS.AMO,Suspensión,Amortiguación,Amortiguadores,9,0,amortiguador|amrotiguador|ojo de amortiguador
+SUS.MUE,2,SUS,Suspensión,Muelles,,,,
+SUS.MUE.HOJ,3,SUS.MUE,Suspensión,Muelles,Hojas de muelle / resortes,10,0,hojas?\s*(de )?muelle|hoja #|hoja segunda|muelles delanteros|resortes? de suspension|resortes delanteros|hoja # nuemro|hojas1
+SUS.MUE.BUJ,3,SUS.MUE,Suspensión,Muelles,Bujes / pasadores / balancines,12,2,bujes?|pasador(es)? (de )?muelle|pasador muelle|balancin|tornillo cent
+SUS.EST,2,SUS,Suspensión,Barra estabilizadora,,,,
+SUS.EST.BAR,3,SUS.EST,Suspensión,Barra estabilizadora,Barra estabilizadora y bujes,3,0,barra estab|lagrimal
+SUS.DEL,2,SUS,Suspensión,Suspensión delantera,,,,
+SUS.DEL.TIJ,3,SUS.DEL,Suspensión,Suspensión delantera,Tijeras / rótulas,3,0,tijera
+SUS.GEO,2,SUS,Suspensión,Geometría,,,,
+SUS.GEO.CAM,3,SUS.GEO,Suspensión,Geometría,Enderezado / camber,1,0,camber
+RUE.ROD,2,RUE,"Ruedas, cubos y rodamientos",Cubos y rodamientos,,,,
+RUE.ROD.ROD,3,RUE.ROD,"Ruedas, cubos y rodamientos",Cubos y rodamientos,Rodamientos de rueda,17,1,rodamient(?!o volante)|rodmaient|rodamienst|rodamienttos|balinera(?! cardam)|engrase rodamientos|rodamiento sinternos
+RUE.RET,2,RUE,"Ruedas, cubos y rodamientos",Cubos y rodamientos,,,,
+RUE.RET.RET,3,RUE.RET,"Ruedas, cubos y rodamientos",Cubos y rodamientos,Retenedores / sellos de rueda,16,1,"retenedor(?:es)? (?:traseros|delanteros|externos|interno|trasero|y resortes|semieje)|retendores traseros|retenedores,|sello rueda|tapagrasera|retenero|cambio de retenedores$|yretenedores|retenedor y tapagrasera|retenedor de la llanta|retenedores delanteros"
+RUE.FIJ,2,RUE,"Ruedas, cubos y rodamientos",Fijación,,,,
+RUE.FIJ.ESP,3,RUE.FIJ,"Ruedas, cubos y rodamientos",Fijación,Pernos / espárragos de rueda,1,0,esparrago|perno
+NEU.NEU,2,NEU,"Neumáticos, alineación y balanceo",Neumáticos,,,,
+NEU.NEU.NEU,3,NEU.NEU,"Neumáticos, alineación y balanceo",Neumáticos,Neumático / rueda de repuesto,1,1,llanta(?! delantera izquierda)(?! pacha)|rueda de repuesto|candado
+NEU.ALI,2,NEU,"Neumáticos, alineación y balanceo",Alineación y balanceo,,,,
+NEU.ALI.ALI,3,NEU.ALI,"Neumáticos, alineación y balanceo",Alineación y balanceo,Alineación / balanceo / rotación,4,6,alineacion|aleneacion|balanceo|blanceo|rotacion de llantas
+CAR.VID,2,CAR,Carrocería y cabina,Vidrios y visibilidad,,,,
+CAR.VID.VID,3,CAR.VID,Carrocería y cabina,Vidrios y visibilidad,Vidrios / panorámico / película,2,0,vidrio|panoramico|pelicula
+CAR.VID.PLU,3,CAR.VID,Carrocería y cabina,Vidrios y visibilidad,Plumillas / limpiaparabrisas,2,6,plumilla|limpia ?parabri|limpiador parabrisas
+CAR.PUE,2,CAR,Carrocería y cabina,Puertas,,,,
+CAR.PUE.PUE,3,CAR.PUE,Carrocería y cabina,Puertas,Puertas / cerraduras / rieles,9,0,puerta|manija|rodilo|rieles
+CAR.EXT,2,CAR,Carrocería y cabina,Latonería y pintura,,,,
+CAR.EXT.LAT,3,CAR.EXT,Carrocería y cabina,Latonería y pintura,Bumper / latonería / pintura,5,0,bumper|esquinero|lamina troquelada|pintura de bumper
+CAR.CAB,2,CAR,Carrocería y cabina,Cabina,,,,
+CAR.CAB.SOP,3,CAR.CAB,Carrocería y cabina,Cabina,Soportes de cabina / estribo,2,0,soportes de cabina|estribo
+FUR.EST,2,FUR,Furgón / carrocería de carga,Estructura del furgón,,,,
+FUR.EST.EST,3,FUR.EST,Furgón / carrocería de carga,Estructura del furgón,Estructura / travesaños / grapas,5,0,travesa|grapas|vigas|regleta|furgon que|furgón
+FUR.PIS,2,FUR,Furgón / carrocería de carga,Piso y plataforma,,,,
+FUR.PIS.PIS,3,FUR.PIS,Furgón / carrocería de carga,Piso y plataforma,"Piso / plataforma (desoxidar, pintar, modificar)",5,0,plataforma|platafotma|piso|pizo
+FUR.TEC,2,FUR,Furgón / carrocería de carga,Techo y sellado,,,,
+FUR.TEC.IMP,3,FUR.TEC,Furgón / carrocería de carga,Techo y sellado,Impermeabilización / filtraciones,4,0,impermeabiliz|filtracion de agua|filtraciones
+FUR.PIN,2,FUR,Furgón / carrocería de carga,Acabados,,,,
+FUR.PIN.PIN,3,FUR.PIN,Furgón / carrocería de carga,Acabados,Pintura del furgón / cintas reflectivas,2,0,pintura (de )?furgon|cint[a]?s reflectivas|pintura alumin|pegar laminas
+CHA.BAS,2,CHA,Chasis,Bastidor,,,,
+CHA.BAS.BAS,3,CHA.BAS,Chasis,Bastidor,Chasis / soldaduras estructurales,3,0,"chasis|soldadura, soporte|lamina del buje"
+HVA.AAC,2,HVA,Climatización,Aire acondicionado,,,,
+HVA.AAC.AAC,3,HVA.AAC,Climatización,Aire acondicionado,Filtro / correa / sistema A/C,1,2,aire ?acondi|airecondi
+SEG.CIN,2,SEG,Equipos de seguridad,Retención,,,,
+SEG.CIN.CIN,3,SEG.CIN,Equipos de seguridad,Retención,Cinturón de seguridad,1,0,cinturon
+SEG.CIN.CSE,3,SEG.CIN,Equipos de seguridad,Retención,Cilindro de seguridad (cerradura),1,0,cilindro de seguridad
+GEN.LUB,2,GEN,General / servicios,Servicios generales,,,,
+GEN.LUB.ENG,3,GEN.LUB,General / servicios,Servicios generales,Engrase general de chasis,6,13,engrase|grasa
+GEN.SRV,2,GEN,General / servicios,Servicios generales,,,,
+GEN.SRV.LAV,3,GEN.SRV,General / servicios,Servicios generales,Lavado,0,2,lavado(?! inyector| al sistema)
+GEN.SRV.INS,3,GEN.SRV,General / servicios,Servicios generales,Revisión / inspección general / revisión de fabricante,0,21,"revision( preventiva| general| completa|$| de \d|,)|inspeccion|alistamiento|primera revision|segunda revision|tercera? revis|cuarta revision|quinta|sexta|revisio |compresion motor|revision de ruedad"
+GEN.SRV.LEG,3,GEN.SRV,General / servicios,Servicios generales,Revisión técnico-mecánica (legal),2,0,tecnomecanica|tecnicomecanica
+GEN.SRV.GRU,3,GEN.SRV,General / servicios,Servicios generales,Grúa / auxilio vial,1,0,grua
+GEN.SRV.FLU,3,GEN.SRV,General / servicios,Servicios generales,Cambio total de fluidos,0,7,(todos|demas) (los )?fluidos|cambio total de fluidos
+GEN.SRV.MOD,3,GEN.SRV,General / servicios,Servicios generales,Modificación / adecuación,1,0,modificacion

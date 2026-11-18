@@ -153,7 +153,18 @@ Luego seguir el orden de sprints del [doc 06](06-alcance-roles-y-roadmap.md#3-ho
 Plantillas de importación (CSV/Excel) con validación previa y reporte de errores por fila, para:
 vehículos · lecturas actuales · documentos · repuestos · proveedores · técnicos · conductores · última ejecución de cada rutina PM por vehículo.
 
-## 9. Criterios de escalabilidad (cuándo evolucionar)
+## 9. Integración GPS Ituran (adelantada a fase 1–2)
+
+OLAST usa **Ituran**. La integración elimina la digitación del odómetro y hace confiable el cálculo de PM y del costo/km.
+
+- **Módulo `telematics`** con un adaptador `IturanProvider` detrás de una interfaz `TelematicsProvider` (`getOdometer`, `getDailyDistance`, `getHourlyDistance`, `getEngineHours`), para poder cambiar de proveedor sin tocar el resto.
+- **Job programado** (pg-boss): cada hora la distancia horaria; a las 00:30 el odómetro y la distancia del día anterior por vehículo → `meter_readings` con `source = gps`.
+- **Mapeo** vehículo CMMS ↔ unidad Ituran por placa / ID de dispositivo (tabla `telematics_units`).
+- **Reglas:** la lectura GPS pasa por las mismas validaciones de P2. Si GPS y conductor difieren más de 2 %, se marca para revisión. Vehículo sin reporte GPS por más de 48 h → alerta.
+- **Credenciales:** solo en el gestor de secretos del entorno (variables `ITURAN_*`). **Nunca en el código, en el repositorio (es público) ni en documentos.**
+- **Paso previo:** confirmar con Ituran el tipo de acceso (API/servicio web, exportación programada de reportes o archivo), la URL, el método de autenticación y los límites de consulta. Hacer una prueba de conexión antes del Sprint 1.
+
+## 10. Criterios de escalabilidad (cuándo evolucionar)
 
 | Señal | Acción |
 |---|---|

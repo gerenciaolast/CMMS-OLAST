@@ -5,7 +5,7 @@
 | Módulo | MVP (Fase 1) | Fase 2 | Fase 3 |
 |---|---|---|---|
 | **Vehículos** | Ficha, criticidad, estados, historial, documentos y vencimientos | Componentes rastreables (motor, caja, baterías) | Costo de ciclo de vida, decisión de reemplazo |
-| **Lecturas** | Manual, desde inspección y OT, validaciones | Desde combustible, importación masiva | Integración GPS/telemática |
+| **Lecturas** | Manual, desde inspección y OT, validaciones · **odómetro diario desde GPS Ituran** | Recorridos horarios Ituran, desde combustible, importación masiva | Eventos de telemática (códigos de falla, conducción) |
 | **Preventivo** | Planes, rutinas por km/h/tiempo, generación automática de OT, previsión | Campañas/recalls, optimización PM asistida | Mantenimiento predictivo con datos de telemática / DTC |
 | **Inspecciones** | Checklist pre-operacional móvil (PWA), bloqueo por crítico | Inspecciones periódicas técnicas con mediciones | Modo offline completo |
 | **Avisos y OT** | Ciclo completo, mano de obra, repuestos, servicios externos, codificación de falla, esperas, retrabajo | Presupuestos y aprobación por monto, firma del proveedor | Portal de proveedores externos |

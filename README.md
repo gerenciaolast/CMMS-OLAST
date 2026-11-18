@@ -25,4 +25,7 @@ Basado en ISO 55000, EN 13306, ISO 14224, VMRS (ATA/TMC), SAE JA1011 (RCM), mét
 | 05 | [Indicadores](docs/05-indicadores.md) | 14 KPI del MVP con fórmulas y metas, análisis, KPI de fase 2 |
 | 06 | [Alcance, roles y hoja de ruta](docs/06-alcance-roles-y-roadmap.md) | Módulos por fase, matriz de permisos, sprints, backlog del MVP, Definition of Done |
 | 07 | [Guía de desarrollo](docs/07-guia-de-desarrollo.md) | Arquitectura, stack, estructura del repositorio, convenciones, pruebas, Sprint 0 paso a paso |
-| 08 | [Decisiones pendientes](docs/08-decisiones-pendientes.md) | Preguntas para OLAST y lista de aprobación |
+| 08 | [Decisiones pendientes](docs/08-decisiones-pendientes.md) | Preguntas para OLAST, respuestas recibidas y lista de aprobación |
+| 09 | [Catálogo de componentes y análisis del historial](docs/09-catalogo-componentes-y-analisis-historial.md) | Catálogo OLAST (22 sistemas, 106 componentes, compatible con VMRS), hallazgos del historial 2024–2026 |
+
+Datos semilla en [`data/catalogos/`](data/catalogos/) · herramienta de migración en [`tools/`](tools/).

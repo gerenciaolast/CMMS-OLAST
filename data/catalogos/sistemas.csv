@@ -1,0 +1,23 @@
+codigo,nombre,vmrs_sistema_ref
+MOT,Motor,045
+ADM,Admisión y sobrealimentación,041
+ESC,"Escape, emisiones y freno de motor",043
+COM,Combustible,044
+REF,Refrigeración,042
+ELE,"Eléctrico: arranque, carga y cableado",031/032
+ELN,Electrónica y diagnóstico,
+ILU,Iluminación y señalización,034
+EMB,Embrague,023
+TRA,Caja de velocidades,026
+TRE,"Tren motriz (cardán, diferencial, ejes)",
+FRN,Frenos,013
+DIR,Dirección,015
+SUS,Suspensión,016
+RUE,"Ruedas, cubos y rodamientos",018
+NEU,"Neumáticos, alineación y balanceo",017
+CAR,Carrocería y cabina,002
+FUR,Furgón / carrocería de carga,
+CHA,Chasis,014
+HVA,Climatización,001
+SEG,Equipos de seguridad,
+GEN,General / servicios,

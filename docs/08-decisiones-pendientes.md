@@ -2,6 +2,18 @@
 
 Para iniciar el desarrollo necesitamos que OLAST valide los siguientes puntos. Donde hay un valor propuesto, si no hay objeción se toma como aprobado.
 
+## 0. Respuestas recibidas (v0.2)
+
+| Tema | Respuesta / dato confirmado |
+|---|---|
+| Dueño de producto / aprobador | Gerencia de OLAST |
+| País | Colombia (COP, km, galones/litros; documentos: SOAT, revisión técnico-mecánica y de emisiones) |
+| Flota del historial | 22 vehículos: camiones livianos con furgón (diésel), vans y motocicletas |
+| Sedes | Bogotá, Tunja, Neiva, Villavicencio, Cali, Pereira, Pitalito (+ cliente Farmacomercial) |
+| Talleres | Externos (concesionarios y talleres multimarca por ciudad) |
+| GPS | **Ituran**: se integrará para traer odómetro y recorridos diarios y horarios. La integración pasa del MVP fase 3 a **fase 1–2** (ver doc 07) |
+| Catálogo de fallas | Catálogo propio OLAST construido con el historial y compatible con VMRS (doc 09) |
+
 ## 1. Información de la flota (necesaria para dimensionar)
 
 | # | Pregunta | Propuesta / supuesto |

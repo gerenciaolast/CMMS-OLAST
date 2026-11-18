@@ -1,0 +1,84 @@
+{
+ "acciones": [
+  [
+   "REE",
+   "cambi|reemplaz|instalacion|adicion"
+  ],
+  [
+   "REP",
+   "repar|arreglo|soldad|soldar|rectific|vulcaniz|remach|recalz|grafado|torno|correc"
+  ],
+  [
+   "AJU",
+   "gradua|graduar|gradur|grduar|graudar|tension|ajust|calibra|alinea|aleneacion|balanceo|blanceo|rotacion|purga"
+  ],
+  [
+   "LUB",
+   "engrase|grasa|adicion"
+  ],
+  [
+   "LIM",
+   "lavado|limpi|desoxid|inmuniz|raspado"
+  ],
+  [
+   "INS",
+   "revis|inspecc|escan|scaneo|verificaci|diagnost|alistamiento"
+  ],
+  [
+   "REC",
+   "pintura|impermeabil|modificacion"
+  ]
+ ],
+ "modos": [
+  [
+   "SOB",
+   "recalentamiento|sobrecalent"
+  ],
+  [
+   "FUG",
+   "fuga|perdida de refrigerante|filtracion"
+  ],
+  [
+   "ROT",
+   "rot[oa]s?\\b|fractura|dañad|danad"
+  ],
+  [
+   "DES",
+   "desgaste"
+  ],
+  [
+   "ELC",
+   "corto|bajo amperaje|voltaje bajo|falla electrica|fundido|no daba"
+  ],
+  [
+   "COR",
+   "oxid"
+  ],
+  [
+   "BAJ",
+   "falta de presion"
+  ],
+  [
+   "DSJ",
+   "desplazado|se saltaba"
+  ],
+  [
+   "NOF",
+   "fallando|presentaba fallas"
+  ]
+ ],
+ "causas": [
+  [
+   "DNO",
+   "desgaste"
+  ],
+  [
+   "VAN",
+   "paro camionero"
+  ],
+  [
+   "FMA",
+   "prematuro"
+  ]
+ ]
+}

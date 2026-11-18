@@ -1,0 +1,8 @@
+# Datos sensibles: el repositorio es público
+*.xlsx
+*.xls
+data/historico/
+.env
+.env.*
+!.env.example
+__pycache__/

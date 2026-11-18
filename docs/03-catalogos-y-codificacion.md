@@ -61,7 +61,9 @@ Inspirada en **ISO 14224** (modo – causa – acción) y en la estructura jerá
 
 ### 4.1 Jerarquía de ubicación técnica: Sistema → Conjunto → Componente
 
-Nivel 1 (sistemas) propuesto; los niveles 2 y 3 se cargan como semilla y se amplían con el uso.
+> **Actualizado en v0.2:** esta lista preliminar fue reemplazada por el **catálogo OLAST de 22 sistemas, 74 conjuntos y 106 componentes**, construido con el historial real. Ver [doc 09](09-catalogo-componentes-y-analisis-historial.md) y [`data/catalogos/`](../data/catalogos/). La tabla siguiente queda solo como referencia.
+
+Nivel 1 (sistemas) preliminar:
 
 | Código | Sistema | Ejemplos de conjunto (nivel 2) |
 |---|---|---|
