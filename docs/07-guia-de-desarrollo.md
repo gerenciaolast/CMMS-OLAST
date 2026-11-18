@@ -162,7 +162,9 @@ OLAST usa **Ituran**. La integración elimina la digitación del odómetro y hac
 - **Mapeo** vehículo CMMS ↔ unidad Ituran por placa / ID de dispositivo (tabla `telematics_units`).
 - **Reglas:** la lectura GPS pasa por las mismas validaciones de P2. Si GPS y conductor difieren más de 2 %, se marca para revisión. Vehículo sin reporte GPS por más de 48 h → alerta.
 - **Credenciales:** solo en el gestor de secretos del entorno (variables `ITURAN_*`). **Nunca en el código, en el repositorio (es público) ni en documentos.**
-- **Paso previo:** confirmar con Ituran el tipo de acceso (API/servicio web, exportación programada de reportes o archivo), la URL, el método de autenticación y los límites de consulta. Hacer una prueba de conexión antes del Sprint 1.
+- **Servicio confirmado (nov-2026):** Ituran entrega un servicio web **SOAP (WorldFleetLog)** de **estado actual**. Devuelve, por vehículo, la placa, el ID del dispositivo, la fecha del último evento, la posición, la velocidad, el **odómetro**, las **horas de motor**, el nivel de combustible y el estado (en movimiento / detenido / apagado). La autenticación va en un encabezado SOAP con usuario, contraseña y empresa. **Intervalo mínimo entre consultas: 60 s.** La documentación del proveedor es confidencial: no se copia en este repositorio.
+- **Consecuencia de diseño:** el servicio **no entrega historial de recorridos**. Los km diarios y horarios se **calculan en el CMMS** guardando una "foto" del odómetro de cada vehículo cada hora (`telematics_snapshots`) y restando fotos consecutivas. Para eso, el job horario debe estar en marcha desde el primer día de la integración.
+- **Prueba de conexión:** `tools/ituran_prueba_conexion.py`. Resultado del 18-nov-2026: el servicio responde, pero **las credenciales fueron rechazadas** (`Authenticate = false`, "Invalid login credentials or permission denied"). Hay que pedirle a Ituran que confirme si el usuario está activo y si hay restricción por IP. Ver doc 08.
 
 ## 10. Criterios de escalabilidad (cuándo evolucionar)
 

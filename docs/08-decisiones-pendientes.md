@@ -13,6 +13,7 @@ Para iniciar el desarrollo necesitamos que OLAST valide los siguientes puntos. D
 | Talleres | Externos (concesionarios y talleres multimarca por ciudad) |
 | GPS | **Ituran**: se integrará para traer odómetro y recorridos diarios y horarios. La integración pasa del MVP fase 3 a **fase 1–2** (ver doc 07) |
 | Catálogo de fallas | Catálogo propio OLAST construido con el historial y compatible con VMRS (doc 09) |
+| **Pendiente Ituran** | El servicio SOAP responde, pero rechazó las credenciales recibidas (18-nov-2026). Ituran debe confirmar: (1) que el usuario del servicio web sigue activo y la contraseña vigente; (2) si hay **lista blanca de IP**, en cuyo caso hay que definir desde qué servidor con IP fija se consultará; (3) si existe un método de **historial de recorridos**, porque el servicio actual solo da el estado actual |
 
 ## 1. Información de la flota (necesaria para dimensionar)
 
