@@ -19,7 +19,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     else if (me.mustChangePassword && path !== '/cambiar-clave') router.replace('/cambiar-clave');
   }, [me, loading, path, router]);
 
-  if (loading || !me) return <div className="grid min-h-dvh place-items-center text-muted">Cargando…</div>;
+  if (loading || !me)
+    return (
+      <div className="grid min-h-dvh place-items-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <OlastLogo layout="vertical" height={120} className="h-28 w-auto" />
+          <div className="h-1 w-32 overflow-hidden rounded-full bg-sky/30" role="progressbar" aria-label="Cargando">
+            <div className="h-full w-1/3 animate-[loading_1.2s_ease-in-out_infinite] rounded-full bg-brand" />
+          </div>
+        </div>
+      </div>
+    );
 
   const items = NAV.filter((n) => !n.permission || can(n.permission));
   const nav = (

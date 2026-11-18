@@ -26,3 +26,8 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
 }
+
+@keyframes loading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}

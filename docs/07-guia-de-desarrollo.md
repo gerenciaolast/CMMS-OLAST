@@ -155,6 +155,7 @@ Luego seguir el orden de sprints del [doc 06](06-alcance-roles-y-roadmap.md#3-ho
 | Paleta | `#ffffff` · `#82ceed` celeste · `#1275a3` · `#0b5e85` azul principal · `#054e74` azul oscuro · `#232323` texto | Tokens en `apps/web/src/app/globals.css` (`brand`, `brand-600`, `brand-800`, `sky`, `ink`) |
 | Tipografía | Poppins (Regular y Bold) | `next/font/google`, variable `--font-poppins` |
 | Logo a color (degradado azul) | **Solo sobre fondo blanco** | `<OlastLogo variant="color" />` |
+| Logo vertical (símbolo arriba) | Para espacios cuadrados; mismas reglas de color | `<OlastLogo layout="vertical" />` (login móvil, pantalla de carga) |
 | Logo blanco (invertido) | Sobre fondos oscuros o de color corporativo | `<OlastLogo variant="blanco" />` (menú lateral, login) |
 | Usos prohibidos | Cambiar colores, contornear, encerrar en círculo, deformar, rotar, separar símbolo y texto | El componente fija la proporción (`object-contain`); no usar `<img>` sueltos del logo |
 | Recurso gráfico | Curva celeste sobre fondo azul corporativo | Onda del login |

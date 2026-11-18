@@ -43,8 +43,9 @@ export default function LoginPage() {
   return (
     <main className="min-h-dvh bg-white md:grid md:grid-cols-[1.1fr_1fr]">
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-800 via-brand to-brand-600 px-6 pt-8 pb-24 text-white md:flex md:flex-col md:items-start md:justify-center md:px-14 md:pb-14">
-        <OlastLogo variant="blanco" height={44} className="h-9 w-auto md:h-14" />
-        <h1 className="mt-6 max-w-md text-2xl font-semibold leading-tight md:mt-10 md:text-4xl">Mantenimiento y confiabilidad de la flota</h1>
+        <OlastLogo variant="blanco" layout="vertical" height={96} className="mx-auto h-24 w-auto md:hidden" />
+        <OlastLogo variant="blanco" height={56} className="hidden h-14 w-auto md:block" />
+        <h1 className="mt-5 max-w-md text-center text-2xl font-semibold leading-tight md:mt-10 md:text-left md:text-4xl">Mantenimiento y confiabilidad de la flota</h1>
         <p className="mt-3 hidden max-w-md text-white/80 md:block">
           Disponibilidad segura, preventivo a tiempo y costos bajo control en todas las sedes.
         </p>
