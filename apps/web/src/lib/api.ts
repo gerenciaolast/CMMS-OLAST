@@ -1,5 +1,6 @@
 /** Cliente HTTP de la API con renovación automática del token de acceso. */
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+// Mismo dominio por defecto: Next.js reenvía /api/v1 a la API (next.config.ts). Evita CORS y funciona detrás de proxies.
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? '/api/v1';
 const KEY = 'cmms.session';
 
 export interface Tokens {
