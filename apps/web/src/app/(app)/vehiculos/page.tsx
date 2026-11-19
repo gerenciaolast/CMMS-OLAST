@@ -1,8 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Search } from 'lucide-react';
-import { Badge, Card, CriticalityBadge, Progress } from '@/components/ui';
+import { AlertTriangle, FileSpreadsheet, Search } from 'lucide-react';
+import { Badge, Card, CriticalityBadge, Progress, SecondaryButton } from '@/components/ui';
+import { useSession } from '@/lib/session';
 import { api } from '@/lib/api';
 import { STATUS_LABEL, STATUS_TONE, daysUntil, shortDay, km, type VehicleSummary } from '@/lib/fleet';
 import type { VehicleStatus } from '@cmms/shared';
@@ -26,6 +27,7 @@ function Expiry({ v }: { v: VehicleSummary }) {
 }
 
 export default function FleetPage() {
+  const { can } = useSession();
   const [rows, setRows] = useState<VehicleSummary[] | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
   const [site, setSite] = useState('');
@@ -62,9 +64,14 @@ export default function FleetPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold">Flota</h1>
-        <p className="text-muted">Hoja de vida, estado y kilometraje de cada vehículo.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Flota</h1>
+          <p className="text-muted">Hoja de vida, estado y kilometraje de cada vehículo.</p>
+        </div>
+        {can('vehicle.edit') && (
+          <Link href="/vehiculos/importar"><SecondaryButton><FileSpreadsheet size={16} /> Plantilla Excel</SecondaryButton></Link>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

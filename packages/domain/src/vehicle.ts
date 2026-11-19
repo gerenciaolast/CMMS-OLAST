@@ -35,7 +35,7 @@ export function requiresTechnicalInspection(v: Pick<VehicleRecord, 'year' | 'ser
   if (!v.year) return true; // sin año no se puede eximir
   const age = today.getUTCFullYear() - v.year;
   const isPublic = (v.serviceType ?? '').toUpperCase().startsWith('PUBLIC');
-  const threshold = isPublic || v.vehicleTypeCode === 'MOT' ? 2 : 6;
+  const threshold = isPublic || v.vehicleTypeCode === 'MOT' || v.vehicleTypeCode === 'MCA' ? 2 : 6;
   return age >= threshold;
 }
 
@@ -97,4 +97,33 @@ export function validateStatusChange(
 /** Normaliza placas: mayúsculas, sin espacios ni guiones ("L JW938" → "LJW938"). */
 export function normalizePlate(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * Formatos de placa en Colombia (referencia; validar con la ficha técnica vigente del Ministerio de Transporte):
+ * - Automotores: ABC123 · Motocicletas: ABC12D (o ABC12 antiguas) · Motocarros: 123ABC.
+ */
+export const PLATE_FORMATS: Record<string, { pattern: RegExp; example: string }> = {
+  default: { pattern: /^[A-Z]{3}\d{3}$/, example: 'ABC123' },
+  MOT: { pattern: /^[A-Z]{3}\d{2}[A-Z]?$/, example: 'ABC12D' },
+  MCA: { pattern: /^\d{3}[A-Z]{3}$/, example: '123ABC' },
+};
+
+/**
+ * Placa canónica según el tipo de vehículo. Corrige el error frecuente de escribir la placa de un
+ * motocarro con las letras primero ("AFB591" → "591AFB").
+ */
+export function canonicalPlate(raw: string, vehicleTypeCode?: string | null): string {
+  const p = normalizePlate(raw);
+  if (vehicleTypeCode === 'MCA') {
+    const m = /^([A-Z]{3})(\d{3})$/.exec(p);
+    if (m) return `${m[2]}${m[1]}`;
+  }
+  return p;
+}
+
+/** null si la placa cumple el formato del tipo; si no, mensaje para el usuario. */
+export function plateFormatIssue(plate: string, vehicleTypeCode?: string | null): string | null {
+  const f = PLATE_FORMATS[vehicleTypeCode ?? ''] ?? PLATE_FORMATS.default!;
+  return f.pattern.test(plate) ? null : `La placa ${plate} no tiene el formato esperado para este tipo (${f.example})`;
 }

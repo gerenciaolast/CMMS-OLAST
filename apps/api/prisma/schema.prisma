@@ -44,10 +44,11 @@ model Site {
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization     @relation(fields: [organizationId], references: [id])
   userSites    UserSite[]
   vehicles     Vehicle[]
   drivers      Driver[]
+  siteHistory  VehicleSiteLog[]
 
   @@unique([organizationId, code])
   @@map("sites")
@@ -326,14 +327,17 @@ model Driver {
   licenseNumber   String?   @map("license_number")
   licenseCategory String?   @map("license_category")
   licenseExpiry   DateTime? @map("license_expiry") @db.Date
+  email           String?
+  notes           String?
   active          Boolean   @default(true)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  site         Site?        @relation(fields: [siteId], references: [id])
-  vehicles     Vehicle[]
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  site         Site?           @relation(fields: [siteId], references: [id])
+  vehicles     VehicleDriver[]
 
+  @@unique([organizationId, documentId])
   @@map("drivers")
 }
 
@@ -366,7 +370,6 @@ model Vehicle {
   acquisitionDate  DateTime?     @map("acquisition_date") @db.Date
   acquisitionCost  Decimal?      @map("acquisition_cost") @db.Decimal(14, 2)
   inServiceDate    DateTime?     @map("in_service_date") @db.Date
-  assignedDriverId String?       @map("assigned_driver_id") @db.Uuid
   costCenter       String?       @map("cost_center")
   notes            String?
   /// Datos variables: llantas (medida, cantidad por eje, marca, índice de carga), etc.
@@ -376,14 +379,16 @@ model Vehicle {
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
-  organization   Organization       @relation(fields: [organizationId], references: [id])
-  site           Site               @relation(fields: [siteId], references: [id])
-  vehicleModel   VehicleModel       @relation(fields: [vehicleModelId], references: [id])
-  assignedDriver Driver?            @relation(fields: [assignedDriverId], references: [id])
-  statusLog      VehicleStatusLog[]
-  readings       MeterReading[]
-  replacements   MeterReplacement[]
-  documents      VehicleDocument[]
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  site         Site               @relation(fields: [siteId], references: [id])
+  vehicleModel VehicleModel       @relation(fields: [vehicleModelId], references: [id])
+  statusLog    VehicleStatusLog[]
+  readings     MeterReading[]
+  replacements MeterReplacement[]
+  documents    VehicleDocument[]
+  drivers      VehicleDriver[]
+  siteHistory  VehicleSiteLog[]
+  tireChanges  TireChange[]
 
   @@unique([organizationId, plate])
   @@index([siteId, status])
@@ -459,4 +464,78 @@ model VehicleDocument {
 
   @@unique([vehicleId, documentTypeId])
   @@map("vehicle_documents")
+}
+
+/// Conductores habilitados por vehículo (uno o varios; cualquiera puede hacer la inspección diaria).
+model VehicleDriver {
+  vehicleId  String   @map("vehicle_id") @db.Uuid
+  driverId   String   @map("driver_id") @db.Uuid
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@id([vehicleId, driverId])
+  @@index([driverId])
+  @@map("vehicle_drivers")
+}
+
+/// Historial de sedes: los vehículos se reubican según la operación (costos y KPI por sede usan este historial).
+model VehicleSiteLog {
+  id        String    @id @default(uuid()) @db.Uuid
+  vehicleId String    @map("vehicle_id") @db.Uuid
+  siteId    String    @map("site_id") @db.Uuid
+  startedAt DateTime  @map("started_at") @db.Timestamptz
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz
+  reason    String?
+  userId    String?   @map("user_id") @db.Uuid
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  site    Site    @relation(fields: [siteId], references: [id])
+
+  @@index([vehicleId, startedAt])
+  @@map("vehicle_site_log")
+}
+
+enum TireAxle {
+  front
+  rear
+  spare
+}
+
+enum TireChangeReason {
+  wear /// desgaste
+  road_damage /// daño en la vía (pinchazo, estallido, corte)
+  theft /// robo (típicamente la de repuesto)
+  rotation /// rotación entre posiciones
+  other
+  unknown /// histórico sin motivo
+}
+
+/// Registro de cambio de llantas (fase 1). El seguimiento por número de serie es fase 2.
+model TireChange {
+  id          String           @id @default(uuid()) @db.Uuid
+  vehicleId   String           @map("vehicle_id") @db.Uuid
+  changedAt   DateTime         @map("changed_at") @db.Timestamptz
+  odometer    Int?
+  axle        TireAxle
+  quantity    Int
+  /// Posiciones específicas opcionales (p. ej. DEL-IZQ, TRAS-DER-EXT).
+  positions   String[]
+  reason      TireChangeReason
+  tireSize    String?          @map("tire_size")
+  tireBrand   String?          @map("tire_brand")
+  unitCost    Decimal?         @map("unit_cost") @db.Decimal(14, 2)
+  totalCost   Decimal?         @map("total_cost") @db.Decimal(14, 2)
+  supplier    String?
+  notes       String?
+  workOrderId String?          @map("work_order_id") @db.Uuid
+  userId      String?          @map("user_id") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, changedAt])
+  @@map("tire_changes")
 }

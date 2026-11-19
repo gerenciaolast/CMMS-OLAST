@@ -1,5 +1,5 @@
 import type { Permission } from '@cmms/shared';
-import { Activity, BookOpen, CalendarClock, ClipboardCheck, Gauge, Home, Truck, Wrench, type LucideIcon } from 'lucide-react';
+import { Activity, BookOpen, CalendarClock, ClipboardCheck, Gauge, Home, IdCard, Truck, Wrench, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -13,6 +13,7 @@ export interface NavItem {
 export const NAV: NavItem[] = [
   { href: '/', label: 'Inicio', icon: Home, sprint: null },
   { href: '/vehiculos', label: 'Flota', icon: Truck, permission: 'vehicle.view', sprint: null },
+  { href: '/conductores', label: 'Conductores', icon: IdCard, permission: 'vehicle.view', sprint: null },
   { href: '/ot', label: 'Órdenes de trabajo', icon: Wrench, permission: 'work_order.view', sprint: 'S2' },
   { href: '/preventivo', label: 'Preventivo', icon: CalendarClock, permission: 'pm_plan.manage', sprint: 'S3' },
   { href: '/inspeccion', label: 'Inspección diaria', icon: ClipboardCheck, permission: 'inspection.perform', sprint: 'S4' },

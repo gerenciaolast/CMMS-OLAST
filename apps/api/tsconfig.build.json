@@ -1,1 +1,1 @@
-{ "extends": "./tsconfig.json", "compilerOptions": { "rootDir": "src", "types": ["node"] }, "include": ["src"], "exclude": ["test", "prisma"] }
+{ "extends": "./tsconfig.json", "compilerOptions": { "rootDir": "src", "types": ["node", "multer"] }, "include": ["src"], "exclude": ["test", "prisma"] }

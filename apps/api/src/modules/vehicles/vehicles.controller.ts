@@ -94,13 +94,76 @@ export class VehiclesController {
     return this.prisma.vehicleModel.create({ data: { vehicleTypeId: type.id, make: b.make.toUpperCase(), model: b.model.toUpperCase(), fuelType: b.fuelType } });
   }
 
+  @RequirePermissions('vehicle.change_status')
+  @Post('vehicles/:id/transfer')
+  transfer(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(S.Transfer)) b: z.infer<typeof S.Transfer>) {
+    return this.svc.transfer(u, id, b);
+  }
+
+  @RequirePermissions('vehicle.edit')
+  @Put('vehicles/:id/drivers')
+  setDrivers(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(S.SetDrivers)) b: z.infer<typeof S.SetDrivers>) {
+    return this.svc.setDrivers(u, id, b);
+  }
+
+  @RequirePermissions('vehicle.view')
+  @Get('vehicles/:id/tire-changes')
+  async tireChanges(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    await this.svc.findScoped(u, id);
+    return this.prisma.tireChange.findMany({ where: { vehicleId: id }, orderBy: { changedAt: 'desc' } });
+  }
+
+  @RequirePermissions('meter.record')
+  @Post('vehicles/:id/tire-changes')
+  tireChange(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(S.TireChangeBody)) b: z.infer<typeof S.TireChangeBody>) {
+    return this.svc.recordTireChange(u, id, b);
+  }
+
+  // ───── Conductores ─────
+
   @RequirePermissions('vehicle.view')
   @Get('drivers')
-  drivers(@CurrentUser() u: AuthUser) {
+  drivers(@CurrentUser() u: AuthUser, @Query('includeInactive') includeInactive?: string) {
     return this.prisma.driver.findMany({
-      where: { organizationId: u.organizationId, active: true, ...(u.siteIds ? { siteId: { in: u.siteIds } } : {}) },
-      select: { id: true, fullName: true, site: { select: { code: true } } },
+      where: {
+        organizationId: u.organizationId,
+        ...(includeInactive === 'true' ? {} : { active: true }),
+        ...(u.siteIds ? { OR: [{ siteId: { in: u.siteIds } }, { siteId: null }] } : {}),
+      },
+      include: {
+        site: { select: { code: true, name: true } },
+        vehicles: { select: { isPrimary: true, vehicle: { select: { id: true, plate: true } } } },
+      },
       orderBy: { fullName: 'asc' },
     });
+  }
+
+  @RequirePermissions('vehicle.edit')
+  @Audit('driver')
+  @Post('drivers')
+  async createDriver(@CurrentUser() u: AuthUser, @Body(new ZodPipe(S.DriverBody)) b: z.infer<typeof S.DriverBody>) {
+    const { siteCode, ...data } = b;
+    return this.prisma.driver.create({
+      data: { ...data, fullName: data.fullName.toUpperCase(), organizationId: u.organizationId, siteId: await this.siteIdOrNull(u, siteCode) },
+    });
+  }
+
+  @RequirePermissions('vehicle.edit')
+  @Audit('driver')
+  @Patch('drivers/:id')
+  async updateDriver(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(S.DriverBody.partial())) b: Partial<z.infer<typeof S.DriverBody>>) {
+    await this.prisma.driver.findFirstOrThrow({ where: { id, organizationId: u.organizationId } });
+    const { siteCode, ...data } = b;
+    return this.prisma.driver.update({
+      where: { id },
+      data: { ...data, ...(data.fullName ? { fullName: data.fullName.toUpperCase() } : {}), ...(siteCode !== undefined ? { siteId: await this.siteIdOrNull(u, siteCode) } : {}) },
+    });
+  }
+
+  private async siteIdOrNull(u: AuthUser, code?: string | null) {
+    if (!code) return null;
+    const site = await this.prisma.site.findUnique({ where: { organizationId_code: { organizationId: u.organizationId, code } } });
+    if (!site) throw new AppError('UNKNOWN_SITE', `Sede no válida: ${code}`);
+    return site.id;
   }
 }

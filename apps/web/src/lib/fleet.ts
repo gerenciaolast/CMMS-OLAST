@@ -42,11 +42,35 @@ export interface VehicleSummary {
   nextExpiry: { code: string; expiresAt: string } | null;
   site: { code: string; name: string };
   vehicleModel: { id: string; make: string; model: string; vehicleType: { code: string; name: string; primaryMeter: string } };
-  assignedDriver: { id: string; fullName: string } | null;
+  drivers: { isPrimary: boolean; driver: { id: string; fullName: string; phone: string | null } }[];
 }
+
+export interface Driver {
+  id: string;
+  fullName: string;
+  documentId: string | null;
+  phone: string | null;
+  email: string | null;
+  licenseNumber: string | null;
+  licenseCategory: string | null;
+  licenseExpiry: string | null;
+  notes: string | null;
+  active: boolean;
+  site: { code: string; name: string } | null;
+  vehicles: { isPrimary: boolean; vehicle: { id: string; plate: string } }[];
+}
+
+export const money = (n: string | number | null | undefined) =>
+  n == null ? '—' : Number(n).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
 export interface VehicleDetail extends VehicleSummary {
   rtmRequired: boolean;
+  siteHistory: { id: string; startedAt: string; endedAt: string | null; reason: string | null; site: { code: string; name: string } }[];
+  tireChanges: {
+    id: string; changedAt: string; odometer: number | null; axle: 'front' | 'rear' | 'spare'; quantity: number; positions: string[];
+    reason: 'wear' | 'road_damage' | 'theft' | 'rotation' | 'other' | 'unknown'; tireSize: string | null; tireBrand: string | null;
+    totalCost: string | null; supplier: string | null; notes: string | null;
+  }[];
   engineNumber: string | null;
   color: string | null;
   serviceType: string | null;

@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { PrismaClient, VehicleStatus, Ownership } from '@prisma/client';
-import { computeCriticality, normalizePlate, validateReading } from '@cmms/domain';
+import { canonicalPlate, computeCriticality, normalizePlate, plateFormatIssue, validateReading } from '@cmms/domain';
 
 /**
  * Importación de la plantilla de inventario de flota (tools/plantilla_flota.py).
@@ -15,6 +15,8 @@ export interface ImportReport {
   skipped: string[];
   readings: number;
   documents: number;
+  drivers: number;
+  transfers: number;
   criticality: number;
   warnings: string[];
 }
@@ -87,29 +89,34 @@ function defined<T extends object>(o: T): Partial<T> {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
 }
 
-export async function importFleetWorkbook(prisma: PrismaClient, file: string, organizationName = 'OLAST'): Promise<ImportReport> {
+export async function importFleetWorkbook(prisma: PrismaClient, file: string | Buffer, organizationName = 'OLAST'): Promise<ImportReport> {
   const wb = new ExcelJS.Workbook();
   try {
-    await wb.xlsx.readFile(file);
+    if (typeof file === 'string') await wb.xlsx.readFile(file);
+    else await wb.xlsx.load(file as unknown as ArrayBuffer);
   } catch (e) {
     if (e instanceof TypeError && /comments/.test(e.message))
       throw new Error('La plantilla tiene comentarios/notas de celda que no se pueden leer. Elimínelos (use la columna «Observaciones») y vuelva a importar.');
     throw e;
   }
-  const report: ImportReport = { created: [], updated: [], skipped: [], readings: 0, documents: 0, criticality: 0, warnings: [] };
+  const report: ImportReport = { created: [], updated: [], skipped: [], readings: 0, documents: 0, drivers: 0, transfers: 0, criticality: 0, warnings: [] };
   const org = await prisma.organization.findFirstOrThrow({ where: { name: organizationName } });
 
   for (const r of sheetRows(wb.getWorksheet('Vehiculos'))) {
-    const plate = normalizePlate(str(r['Placa']) ?? '');
+    const typeCodeRaw = str(r['Tipo vehículo (código)']) ?? 'CAR';
+    const plate = canonicalPlate(str(r['Placa']) ?? '', typeCodeRaw);
     if (!plate) continue;
     if ((str(r['Incluir (SI/NO)']) ?? 'SI').toUpperCase() !== 'SI') {
       report.skipped.push(plate);
       continue;
     }
     const where = `[${plate}]`;
+    if (plate !== normalizePlate(str(r['Placa']) ?? '')) report.warnings.push(`${where} placa corregida al formato del tipo (${str(r['Placa'])} → ${plate})`);
+    const fmt = plateFormatIssue(plate, typeCodeRaw);
+    if (fmt) report.warnings.push(`${where} ${fmt}`);
     const site = await prisma.site.findUnique({ where: { organizationId_code: { organizationId: org.id, code: str(r['Sede']) ?? '' } } });
     if (!site) { report.warnings.push(`${where} sede desconocida "${str(r['Sede'])}": fila omitida`); continue; }
-    const typeCode = str(r['Tipo vehículo (código)']) ?? 'CAR';
+    const typeCode = typeCodeRaw;
     const vtype = await prisma.vehicleType.findUnique({ where: { code: typeCode } });
     if (!vtype) { report.warnings.push(`${where} tipo de vehículo desconocido "${typeCode}": fila omitida`); continue; }
     const make = (str(r['Marca']) ?? 'SIN MARCA').toUpperCase();
@@ -143,7 +150,6 @@ export async function importFleetWorkbook(prisma: PrismaClient, file: string, or
     });
 
     const data = defined({
-      siteId: site.id,
       vehicleModelId: model.id,
       vin: str(r['VIN / chasis']),
       engineNumber: str(r['No. motor']),
@@ -154,7 +160,6 @@ export async function importFleetWorkbook(prisma: PrismaClient, file: string, or
       ownership: OWNERSHIP[(str(r['Propiedad']) ?? '').toLowerCase()],
       titleHolder: str(r['Titular licencia de tránsito']),
       loadCapacityKg: int(r['Capacidad de carga (kg)']),
-      assignedDriverId: driverId,
       inServiceDate: date(r['Fecha inicio de operación']),
       costCenter: str(r['Centro de costo']),
       notes: str(r['Observaciones']),
@@ -169,10 +174,26 @@ export async function importFleetWorkbook(prisma: PrismaClient, file: string, or
         : await tx.vehicle.create({ data: { ...data, organizationId: org.id, siteId: site.id, vehicleModelId: model.id, plate, status, statusReason: reason, attributes, ...(status === 'retired' ? { retiredAt: now, retirementReason: reason } : {}) } });
       if (!existing) {
         await tx.vehicleStatusLog.create({ data: { vehicleId: v.id, status, reason, startedAt: now, source: 'import' } });
-      } else if (existing.status !== status) {
+        await tx.vehicleSiteLog.create({ data: { vehicleId: v.id, siteId: site.id, startedAt: now, reason: 'Carga inicial del inventario' } });
+      } else if (existing.siteId !== site.id && status !== 'retired') {
+        // Reubicación registrada desde la plantilla: queda en el historial de sedes.
+        await tx.vehicleSiteLog.updateMany({ where: { vehicleId: v.id, endedAt: null }, data: { endedAt: now } });
+        await tx.vehicleSiteLog.create({ data: { vehicleId: v.id, siteId: site.id, startedAt: now, reason: 'Traslado registrado en plantilla' } });
+        await tx.vehicle.update({ where: { id: v.id }, data: { siteId: site.id } });
+        report.transfers++;
+      }
+      if (existing && existing.status !== status) {
         await tx.vehicleStatusLog.updateMany({ where: { vehicleId: v.id, endedAt: null }, data: { endedAt: now } });
         await tx.vehicleStatusLog.create({ data: { vehicleId: v.id, status, reason, startedAt: now, source: 'import' } });
         await tx.vehicle.update({ where: { id: v.id }, data: { status, statusReason: reason, ...(status === 'retired' ? { retiredAt: now, retirementReason: reason } : {}) } });
+      }
+      if (driverId) {
+        const hasPrimary = await tx.vehicleDriver.count({ where: { vehicleId: v.id, isPrimary: true } });
+        await tx.vehicleDriver.upsert({
+          where: { vehicleId_driverId: { vehicleId: v.id, driverId } },
+          create: { vehicleId: v.id, driverId, isPrimary: hasPrimary === 0 },
+          update: {},
+        });
       }
       return v;
     });
@@ -208,6 +229,47 @@ export async function importFleetWorkbook(prisma: PrismaClient, file: string, or
           report.readings++;
         }
       }
+    }
+  }
+
+  // Conductores (uno o varios por vehículo; cualquiera puede hacer la inspección diaria)
+  for (const r of sheetRows(wb.getWorksheet('Conductores'))) {
+    const name = str(r['Nombre completo'])?.replace(/\s+/g, ' ').toUpperCase();
+    if (!name) continue;
+    const doc = str(r['Cédula'])?.replace(/[^\dA-Za-z]/g, '');
+    const siteCode = str(r['Sede']);
+    const site = siteCode ? await prisma.site.findUnique({ where: { organizationId_code: { organizationId: org.id, code: siteCode } } }) : null;
+    if (siteCode && !site) report.warnings.push(`Conductor ${name}: sede desconocida "${siteCode}"`);
+    const data = defined({
+      fullName: name,
+      documentId: doc,
+      phone: str(r['Teléfono']),
+      email: str(r['Correo']),
+      licenseNumber: str(r['No. licencia']),
+      licenseCategory: str(r['Categoría licencia'])?.toUpperCase(),
+      licenseExpiry: date(r['Vence licencia']),
+      siteId: site?.id,
+      active: str(r['Activo (SI/NO)']) ? str(r['Activo (SI/NO)'])!.toUpperCase() !== 'NO' : undefined,
+    });
+    const existing =
+      (doc ? await prisma.driver.findFirst({ where: { organizationId: org.id, documentId: doc } }) : null) ??
+      (await prisma.driver.findFirst({ where: { organizationId: org.id, fullName: name } }));
+    const driver = existing
+      ? await prisma.driver.update({ where: { id: existing.id }, data })
+      : await prisma.driver.create({ data: { ...data, fullName: name, organizationId: org.id } });
+    report.drivers++;
+    for (const raw of (str(r['Placas asignadas']) ?? '').split(/[,;/\s]+/).filter(Boolean)) {
+      const plate = normalizePlate(raw);
+      const v =
+        (await prisma.vehicle.findUnique({ where: { organizationId_plate: { organizationId: org.id, plate } } })) ??
+        (await prisma.vehicle.findUnique({ where: { organizationId_plate: { organizationId: org.id, plate: canonicalPlate(plate, 'MCA') } } }));
+      if (!v) { report.warnings.push(`Conductor ${name}: placa ${plate} no existe`); continue; }
+      const hasPrimary = await prisma.vehicleDriver.count({ where: { vehicleId: v.id, isPrimary: true } });
+      await prisma.vehicleDriver.upsert({
+        where: { vehicleId_driverId: { vehicleId: v.id, driverId: driver.id } },
+        create: { vehicleId: v.id, driverId: driver.id, isPrimary: hasPrimary === 0 },
+        update: {},
+      });
     }
   }
 

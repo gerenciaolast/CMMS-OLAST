@@ -2,14 +2,16 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CheckCircle2, FileText, Gauge, History, Pencil, ShieldAlert, Truck } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRightLeft, CheckCircle2, CircleDot, FileText, Gauge, History, IdCard, MapPin, Pencil, ShieldAlert, Truck } from 'lucide-react';
+import { TIRE_AXLE_LABEL, TIRE_REASON_LABEL, tirePositions, type TireAxle } from '@cmms/domain';
 import type { VehicleStatus } from '@cmms/shared';
 import { Alert, Badge, Button, Card, CriticalityBadge, Field, Modal, Progress, SecondaryButton, Select } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import { OWNERSHIP_LABEL, STATUS_LABEL, STATUS_TONE, day, daysUntil, km, type VehicleDetail } from '@/lib/fleet';
+import { OWNERSHIP_LABEL, STATUS_LABEL, STATUS_TONE, day, daysUntil, km, money, type Driver, type VehicleDetail } from '@/lib/fleet';
 
-type Dialog = null | 'reading' | 'status' | 'criticality' | 'edit' | { doc: string };
+type Dialog = null | 'reading' | 'status' | 'criticality' | 'edit' | 'transfer' | 'drivers' | 'tires' | { doc: string };
+interface Site { code: string; name: string }
 interface DocType { code: string; name: string; isBlocking: boolean; alertDays: number[] }
 
 const SOURCE_LABEL: Record<string, string> = { manual: 'Manual', import: 'Carga inicial', inspection: 'Inspección', work_order: 'OT', fuel: 'Combustible', gps: 'GPS' };
@@ -70,6 +72,9 @@ export default function VehiclePage() {
   const { can } = useSession();
   const [v, setV] = useState<VehicleDetail | null>(null);
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [allDrivers, setAllDrivers] = useState<Driver[]>([]);
+  const [axle, setAxle] = useState<TireAxle>('rear');
   const [dialog, setDialog] = useState<Dialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -78,12 +83,14 @@ export default function VehiclePage() {
   useEffect(() => {
     void load();
     void api<DocType[]>('/catalog/document-types').then(setDocTypes).catch(() => undefined);
+    void api<Site[]>('/sites').then(setSites).catch(() => undefined);
+    void api<Driver[]>('/drivers').then(setAllDrivers).catch(() => undefined);
   }, [load]);
 
   const done = async (msg: string) => {
+    await load(); // primero los datos frescos, luego el aviso
     setDialog(null);
     setNotice(msg);
-    await load();
   };
 
   if (loadError) return <Alert>{loadError}</Alert>;
@@ -120,6 +127,8 @@ export default function VehiclePage() {
           <div className="flex flex-wrap gap-2">
             {can('meter.record') && <SecondaryButton onClick={() => setDialog('reading')}><Gauge size={16} /> Registrar km</SecondaryButton>}
             {can('vehicle.change_status') && <SecondaryButton onClick={() => setDialog('status')}><Truck size={16} /> Cambiar estado</SecondaryButton>}
+            {can('vehicle.change_status') && <SecondaryButton onClick={() => setDialog('transfer')}><ArrowRightLeft size={16} /> Trasladar de sede</SecondaryButton>}
+            {can('meter.record') && <SecondaryButton onClick={() => { setAxle('rear'); setDialog('tires'); }}><CircleDot size={16} /> Cambio de llantas</SecondaryButton>}
             {can('vehicle.edit') && <SecondaryButton onClick={() => setDialog('criticality')}><ShieldAlert size={16} /> Criticidad</SecondaryButton>}
             {can('vehicle.edit') && <SecondaryButton onClick={() => setDialog('edit')}><Pencil size={16} /> Completar datos</SecondaryButton>}
           </div>
@@ -179,7 +188,6 @@ export default function VehiclePage() {
             <Row label="Matriculado en" value={v.registrationCity} />
             <Row label="Propiedad" value={`${OWNERSHIP_LABEL[v.ownership] ?? v.ownership}${v.titleHolder ? ` · ${v.titleHolder}` : ''}`} />
             <Row label="Capacidad de carga" value={v.loadCapacityKg != null ? `${v.loadCapacityKg.toLocaleString('es-CO')} kg` : null} />
-            <Row label="Conductor asignado" value={v.assignedDriver?.fullName} />
             <Row label="Centro de costo" value={v.costCenter} />
             {v.odometerOffset !== 0 && <Row label="Km acumulado real" value={km(v.accumulatedOdometer)} />}
             {v.criticalityScore && (
@@ -230,6 +238,78 @@ export default function VehiclePage() {
               );
             })}
           </ul>
+        </Card>
+
+        {/* Conductores */}
+        <Card>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 font-semibold"><IdCard size={18} /> Conductores habilitados</h2>
+            {can('vehicle.edit') && !retired && <button className="text-sm font-medium text-brand hover:underline" onClick={() => setDialog('drivers')}>Asignar</button>}
+          </div>
+          {v.drivers.length === 0 ? (
+            <p className="text-sm text-muted">Sin conductores asignados.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {v.drivers.map((d) => (
+                <li key={d.driver.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                  <span className="font-medium">{d.driver.fullName}</span>
+                  <span className="flex items-center gap-2 text-muted">
+                    {d.driver.phone && <a className="text-brand" href={`tel:${d.driver.phone}`}>{d.driver.phone}</a>}
+                    {d.isPrimary && <Badge className="border-brand/30 bg-sky/25 text-brand-800">Principal</Badge>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-muted">Cualquiera de los conductores habilitados puede hacer la inspección diaria.</p>
+        </Card>
+
+        {/* Sedes */}
+        <Card>
+          <h2 className="mb-2 flex items-center gap-2 font-semibold"><MapPin size={18} /> Historial de sedes</h2>
+          <ol className="space-y-3">
+            {v.siteHistory.map((h) => (
+              <li key={h.id} className="border-l-2 border-sky pl-3 text-sm">
+                <p className="font-medium">{h.site.name}{!h.endedAt && <span className="ml-2 text-xs text-ok">actual</span>}</p>
+                <p className="text-muted">{h.reason ?? '—'}</p>
+                <p className="text-xs text-muted">{day(h.startedAt)} → {h.endedAt ? day(h.endedAt) : 'hoy'}</p>
+              </li>
+            ))}
+          </ol>
+        </Card>
+
+        {/* Llantas */}
+        <Card className="lg:col-span-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 font-semibold"><CircleDot size={18} /> Cambios de llantas</h2>
+            <p className="text-sm text-muted">
+              {tires ? `Delanteras ${tires.frontSize ?? '—'} × ${tires.frontQty ?? '—'} · Traseras ${tires.rearSize ?? '—'} × ${tires.rearQty ?? '—'}` : 'Configuración de llantas sin registrar'}
+            </p>
+          </div>
+          {v.tireChanges.length === 0 ? (
+            <p className="text-sm text-muted">Sin cambios registrados.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs text-muted uppercase">
+                  <tr><th className="py-2 pr-3">Fecha</th><th className="pr-3">Eje</th><th className="pr-3">Cant.</th><th className="pr-3">Motivo</th><th className="pr-3 text-right">Km</th><th className="pr-3 text-right">Costo</th><th>Detalle</th></tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {v.tireChanges.map((t) => (
+                    <tr key={t.id}>
+                      <td className="py-2 pr-3 whitespace-nowrap">{day(t.changedAt)}</td>
+                      <td className="pr-3">{TIRE_AXLE_LABEL[t.axle]}</td>
+                      <td className="pr-3">{t.quantity}</td>
+                      <td className="pr-3"><Badge className={t.reason === 'theft' || t.reason === 'road_damage' ? 'border-danger/30 text-danger' : 'border-line text-muted'}>{TIRE_REASON_LABEL[t.reason].split(' (')[0]}</Badge></td>
+                      <td className="pr-3 text-right tabular-nums whitespace-nowrap">{km(t.odometer)}</td>
+                      <td className="pr-3 text-right whitespace-nowrap">{money(t.totalCost)}</td>
+                      <td className="text-muted">{[t.positions.join(', '), t.tireBrand, t.supplier, t.notes].filter(Boolean).join(' · ') || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
 
         {/* Lecturas */}
@@ -285,6 +365,114 @@ export default function VehiclePage() {
       </div>
 
       {/* Diálogos */}
+      <Modal title="Trasladar de sede" open={dialog === 'transfer'} onClose={() => setDialog(null)}>
+        <DialogForm
+          submitLabel="Registrar traslado"
+          onSubmit={async (f) => {
+            await api(`/vehicles/${v.id}/transfer`, {
+              method: 'POST',
+              json: { siteCode: f.get('siteCode'), reason: f.get('reason'), effectiveAt: f.get('effectiveAt') ? new Date(String(f.get('effectiveAt'))).toISOString() : undefined },
+            });
+            await done('Traslado registrado');
+          }}
+        >
+          <p className="text-sm text-muted">Sede actual: <strong>{v.site.name}</strong></p>
+          <Select label="Nueva sede" name="siteCode" defaultValue="" required>
+            <option value="" disabled>Seleccione…</option>
+            {sites.filter((s) => s.code !== v.site.code).map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+          </Select>
+          <Field label="Motivo (necesidad de la operación)" name="reason" required minLength={3} />
+          <Field label="Fecha del traslado (vacío = ahora)" name="effectiveAt" type="datetime-local" />
+        </DialogForm>
+      </Modal>
+
+      <Modal title="Conductores habilitados" open={dialog === 'drivers'} onClose={() => setDialog(null)}>
+        <DialogForm
+          submitLabel="Guardar conductores"
+          onSubmit={async (f) => {
+            const driverIds = f.getAll('driverIds').map(String);
+            const primary = String(f.get('primary') ?? '') || null;
+            await api(`/vehicles/${v.id}/drivers`, { method: 'PUT', json: { driverIds, primaryDriverId: primary && driverIds.includes(primary) ? primary : null } });
+            await done('Conductores actualizados');
+          }}
+        >
+          <p className="text-sm text-muted">Marque los conductores que pueden manejar este vehículo y elija el principal.</p>
+          <ul className="max-h-80 space-y-1 overflow-y-auto">
+            {allDrivers.length === 0 && <li className="text-sm text-muted">No hay conductores registrados. Créelos en «Conductores».</li>}
+            {allDrivers.map((d) => {
+              const current = v.drivers.find((x) => x.driver.id === d.id);
+              return (
+                <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-canvas">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="driverIds" value={d.id} defaultChecked={!!current} className="h-4 w-4 accent-brand" />
+                    <span>{d.fullName} <span className="text-muted">{d.site ? `· ${d.site.name}` : ''}</span></span>
+                  </label>
+                  <label className="flex items-center gap-1 text-xs text-muted">
+                    <input type="radio" name="primary" value={d.id} defaultChecked={current?.isPrimary} className="accent-brand" /> principal
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </DialogForm>
+      </Modal>
+
+      <Modal title="Registrar cambio de llantas" open={dialog === 'tires'} onClose={() => setDialog(null)}>
+        <DialogForm
+          submitLabel="Guardar cambio"
+          onSubmit={async (f) => {
+            const s = (k: string) => (String(f.get(k) ?? '').trim() || undefined);
+            const positions = f.getAll('positions').map(String);
+            const r = await api<{ readingStatus: string | null }>(`/vehicles/${v.id}/tire-changes`, {
+              method: 'POST',
+              json: {
+                axle, reason: s('reason'), quantity: positions.length || Number(s('quantity')), positions: positions.length ? positions : undefined,
+                changedAt: s('changedAt') ? new Date(String(s('changedAt'))).toISOString() : undefined,
+                odometer: s('odometer') ? Number(s('odometer')) : undefined, unitCost: s('unitCost') ? Number(s('unitCost')) : undefined,
+                tireBrand: s('tireBrand'), supplier: s('supplier'), notes: s('notes'),
+              },
+            });
+            await done(r.readingStatus === 'flagged' ? 'Cambio registrado; el kilometraje quedó «a validar»' : 'Cambio de llantas registrado');
+          }}
+        >
+          <div>
+            <span className="mb-1 block text-sm font-medium">Eje</span>
+            <div className="grid grid-cols-3 gap-2">
+              {(['front', 'rear', 'spare'] as TireAxle[]).map((a) => (
+                <button type="button" key={a} onClick={() => setAxle(a)}
+                  className={`h-10 rounded-lg border text-sm ${axle === a ? 'border-brand bg-brand text-white' : 'border-line hover:border-brand'}`}>
+                  {TIRE_AXLE_LABEL[a]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Select label="Motivo" name="reason" defaultValue={axle === 'spare' ? 'theft' : 'wear'} key={axle} required>
+            {(['wear', 'road_damage', 'theft', 'rotation', 'other'] as const).filter((r) => !(r === 'rotation' && axle === 'spare')).map((r) => (
+              <option key={r} value={r}>{TIRE_REASON_LABEL[r]}</option>
+            ))}
+          </Select>
+          <fieldset>
+            <legend className="mb-1 text-sm font-medium">Posiciones cambiadas (o indique solo la cantidad)</legend>
+            <div className="grid grid-cols-2 gap-1" key={`pos-${axle}`}>
+              {tirePositions({ frontQty: tires?.frontQty, rearQty: tires?.rearQty }, axle).map((p) => (
+                <label key={p} className="flex items-center gap-2 text-sm"><input type="checkbox" name="positions" value={p} className="h-4 w-4 accent-brand" />{p}</label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Cantidad" name="quantity" type="number" min={1} defaultValue={1} key={`q-${axle}`} />
+            <Field label={`Km (vigente ${km(v.currentOdometer)})`} name="odometer" type="number" min={0} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Costo unitario (COP)" name="unitCost" type="number" min={0} />
+            <Field label="Marca" name="tireBrand" defaultValue={tires?.brand ?? ''} />
+          </div>
+          <Field label="Proveedor / montallantas" name="supplier" />
+          <Field label="Fecha (vacío = ahora)" name="changedAt" type="datetime-local" />
+          <Field label="Observaciones (obligatorio en robo: lugar y denuncia)" name="notes" />
+        </DialogForm>
+      </Modal>
+
       <Modal title="Registrar kilometraje" open={dialog === 'reading'} onClose={() => setDialog(null)}>
         <DialogForm
           submitLabel="Guardar lectura"

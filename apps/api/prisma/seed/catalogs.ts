@@ -55,6 +55,7 @@ export const VEHICLE_TYPES = [
   { code: 'REM', name: 'Remolque / semirremolque', primaryMeter: 'odometer', maxDailyUsage: 1500 },
   { code: 'BUS', name: 'Bus / van de pasajeros', primaryMeter: 'odometer', maxDailyUsage: 1000 },
   { code: 'MOT', name: 'Motocicleta', primaryMeter: 'odometer', maxDailyUsage: 600 },
+  { code: 'MCA', name: 'Motocarro (tres ruedas, carga)', primaryMeter: 'odometer', maxDailyUsage: 400 },
   { code: 'MAQ', name: 'Maquinaria / montacargas', primaryMeter: 'hourmeter', maxDailyUsage: 24 },
 ];
 

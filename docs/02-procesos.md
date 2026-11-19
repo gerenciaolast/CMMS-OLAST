@@ -24,6 +24,9 @@ flowchart LR
 **Reglas de negocio**
 - Placa y VIN únicos. No se borra un vehículo: se da de baja (el historial se conserva para siempre).
 - Un vehículo no puede pasar a OPERATIVO sin: criticidad, plan PM asignado (o marcado explícitamente "sin plan"), lectura inicial.
+- **Reubicación entre sedes:** un vehículo puede trasladarse a otra sede por necesidad de la operación. El traslado (sede destino, fecha y motivo) cierra la sede vigente y abre la nueva en el **historial de sedes**; costos, OT y KPI por sede se asignan según la sede vigente en la fecha del evento. La sede no se edita directamente: siempre es un traslado.
+- **Conductores:** un vehículo puede tener **uno o varios conductores habilitados** (uno marcado como principal). Cualquiera de ellos puede hacer la inspección pre-operacional (P3).
+- **Placas:** se guardan normalizadas y en el formato del tipo de vehículo: automotores ABC123, motocicletas ABC12D y **motocarros 123ABC** (si se escribe con las letras primero, el sistema la corrige).
 - **Excepción de migración:** los vehículos que ya operan se cargan con la plantilla de inventario (`tools/plantilla_flota.py` → `fleet:import`) en su estado real, aunque les falten datos. La ficha muestra los **datos pendientes** y su % de completitud. Los pendientes "requeridos para alarmas" (kilometraje, criticidad, SOAT y técnico-mecánica cuando aplica) deben completarse antes de activar el preventivo (S3).
 - Los componentes de alto valor con número de serie (neumáticos, baterías, motor, caja) pueden registrarse como **componentes rastreables** que se montan/desmontan del vehículo (fase 2).
 
@@ -241,7 +244,16 @@ stateDiagram-v2
 
 ---
 
-## P13. Neumáticos (fase 2)
+## P13. Neumáticos
+
+**Fase 1 (disponible): registro de cambios de llantas por vehículo.**
+- Datos: fecha, kilometraje, eje (delanteras / traseras / repuesto), cantidad y posiciones (opcional), **motivo**, medida, marca, costo unitario, proveedor y observaciones.
+- Motivos: **desgaste** (normalmente por eje: delanteras o traseras), **daño en la vía** (pinchazo, estallido, corte), **robo** (típicamente la de repuesto; exige descripción y denuncia), rotación y otro.
+- Validaciones: la cantidad no puede superar las llantas del eje según la configuración del vehículo; las posiciones deben existir en ese eje.
+- Si el registro trae un kilometraje mayor al vigente, se guarda también como lectura de odómetro (con las validaciones de P2).
+- Análisis previstos: costo de llantas por km y por vehículo, frecuencia de daños en vía y robos por sede/ruta.
+
+**Fase 2:**
 
 - Neumático como componente rastreable con número de serie/fuego: marca, medida, posición, profundidad de banda inicial.
 - Montaje/desmontaje/rotación/reencauche con lectura de km → **costo por km por neumático** y vida útil por marca.

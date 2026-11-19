@@ -66,8 +66,11 @@ erDiagram
 |---|---|
 | `vehicle_types` | `code` (LIV, CAR…), `name`, `primary_meter` (odometer/hourmeter), `max_daily_usage` (validación) |
 | `vehicle_models` | `vehicle_type_id`, `make`, `model`, `year_from`, `year_to`, `fuel_type`, `attributes` (JSONB) |
-| `vehicles` | `organization_id`, `site_id`, `internal_code` (nro. interno), `plate` (único), `vin` (único), `vehicle_model_id`, `year`, `color`, `fuel_type`, `criticality` (A/B/C), `criticality_score` (JSON con los 4 criterios), `status` (actual), `ownership` (propio/arrendado), `acquisition_date`, `acquisition_cost`, `in_service_date`, `current_odometer`, `current_hourmeter`, `odometer_offset` (por cambio de odómetro), `assigned_driver_id`, `cost_center`, `attributes` (JSONB), `retired_at`, `retirement_reason` |
+| `vehicles` | `organization_id`, `site_id`, `internal_code` (nro. interno), `plate` (único, formato según tipo), `vin` (único), `vehicle_model_id`, `year`, `color`, `fuel_type`, `criticality` (A/B/C), `criticality_score` (JSON con los 4 criterios), `status` (actual), `ownership` (propio/arrendado), `acquisition_date`, `acquisition_cost`, `in_service_date`, `current_odometer`, `current_hourmeter`, `odometer_offset` (por cambio de odómetro), `cost_center`, `attributes` (JSONB), `retired_at`, `retirement_reason` |
 | `vehicle_status_log` | `vehicle_id`, `status`, `reason`, `started_at`, `ended_at`, `work_order_id` (nullable), `user_id`, `source` (auto/manual) |
+| `vehicle_drivers` | `vehicle_id`, `driver_id`, `is_primary`, `assigned_at` — un vehículo puede tener varios conductores habilitados |
+| `vehicle_site_log` | `vehicle_id`, `site_id`, `started_at`, `ended_at`, `reason`, `user_id` — historial de sedes (traslados) |
+| `tire_changes` | `vehicle_id`, `changed_at`, `odometer`, `axle` (front/rear/spare), `quantity`, `positions[]`, `reason` (wear/road_damage/theft/rotation/other), `tire_size`, `tire_brand`, `unit_cost`, `total_cost`, `supplier`, `notes`, `work_order_id` |
 | `meter_readings` | `vehicle_id`, `meter_type`, `value`, `accumulated_value`, `read_at`, `source` (inspection/work_order/fuel/gps/manual), `is_flagged`, `flag_reason`, `user_id` |
 | `meter_replacements` | `vehicle_id`, `meter_type`, `old_final_value`, `new_initial_value`, `replaced_at`, `reason` |
 | `document_types` | `code`, `name`, `is_blocking` (bloquea al vencer), `alert_days` (ej. [30,15,7]) |

@@ -1,7 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma, VehicleStatus } from '@prisma/client';
 import {
+  canonicalPlate,
   computeCriticality,
+  plateFormatIssue,
+  TireRuleError,
+  validateTireChange,
+  type TireChangeInput,
   missingVehicleFields,
   requiresTechnicalInspection,
   normalizePlate,
@@ -26,7 +31,7 @@ const READING_REJECTION: Record<string, string> = {
 const SUMMARY_INCLUDE = {
   site: { select: { code: true, name: true } },
   vehicleModel: { select: { id: true, make: true, model: true, vehicleType: { select: { code: true, name: true, primaryMeter: true } } } },
-  assignedDriver: { select: { id: true, fullName: true } },
+  drivers: { select: { isPrimary: true, driver: { select: { id: true, fullName: true, phone: true } } }, orderBy: [{ isPrimary: 'desc' }, { assignedAt: 'asc' }] },
   documents: { where: { expiresAt: { not: null } }, select: { expiresAt: true, documentType: { select: { code: true } } } },
 } satisfies Prisma.VehicleInclude;
 
@@ -102,13 +107,15 @@ export class VehiclesService {
   /** Hoja de vida (E1-H3). */
   async detail(user: AuthUser, id: string) {
     const v = this.decorate(await this.findScoped(user, id));
-    const [readings, statusLog, documents] = await Promise.all([
+    const [readings, statusLog, documents, siteHistory, tireChanges] = await Promise.all([
       this.prisma.meterReading.findMany({ where: { vehicleId: id }, orderBy: { readAt: 'desc' }, take: 20 }),
       this.prisma.vehicleStatusLog.findMany({ where: { vehicleId: id }, orderBy: { startedAt: 'desc' }, take: 30 }),
       this.prisma.vehicleDocument.findMany({ where: { vehicleId: id }, include: { documentType: true }, orderBy: { expiresAt: 'asc' } }),
+      this.prisma.vehicleSiteLog.findMany({ where: { vehicleId: id }, include: { site: { select: { code: true, name: true } } }, orderBy: { startedAt: 'desc' } }),
+      this.prisma.tireChange.findMany({ where: { vehicleId: id }, orderBy: { changedAt: 'desc' }, take: 50 }),
     ]);
     const rtmRequired = requiresTechnicalInspection({ year: v.year, serviceType: v.serviceType, vehicleTypeCode: v.vehicleModel.vehicleType.code }, new Date());
-    return { ...v, readings, statusLog, documents, rtmRequired };
+    return { ...v, readings, statusLog, documents, rtmRequired, siteHistory, tireChanges };
   }
 
   private async siteId(user: AuthUser, code: string) {
@@ -122,13 +129,16 @@ export class VehiclesService {
   }
 
   async create(user: AuthUser, b: CreateVehicle) {
-    const plate = normalizePlate(b.plate);
     // Doc 02 P1: un vehículo nuevo no queda operativo sin criticidad y lectura inicial.
     // Entra en "reserva" y pasa a operativo con POST /vehicles/:id/status, que valida ambas condiciones.
     const status = b.status ?? 'reserve';
     if (status === 'operational' || status === 'operational_restricted' || status === 'retired')
       throw new AppError('INVALID_INITIAL_STATUS', 'Un vehículo nuevo se crea en reserva; actívelo con el cambio de estado una vez tenga criticidad y kilometraje', HttpStatus.UNPROCESSABLE_ENTITY);
     const siteId = await this.siteId(user, b.siteCode);
+    const model = await this.prisma.vehicleModel.findUnique({ where: { id: b.vehicleModelId }, include: { vehicleType: true } });
+    if (!model) throw new AppError('UNKNOWN_MODEL', 'Modelo de vehículo no encontrado');
+    const plate = canonicalPlate(b.plate, model.vehicleType.code);
+    const plateWarning = plateFormatIssue(plate, model.vehicleType.code);
     const { siteCode: _s, tires, initialOdometer, status: _st, plate: _p, ...data } = b;
     return this.prisma.$transaction(async (tx) => {
       const v = await tx.vehicle.create({
@@ -144,20 +154,20 @@ export class VehiclesService {
         },
       });
       await tx.vehicleStatusLog.create({ data: { vehicleId: v.id, status, reason: 'Alta del vehículo', startedAt: new Date(), userId: user.id } });
+      await tx.vehicleSiteLog.create({ data: { vehicleId: v.id, siteId, startedAt: new Date(), reason: 'Alta del vehículo', userId: user.id } });
       if (initialOdometer != null)
         await tx.meterReading.create({
           data: { vehicleId: v.id, value: initialOdometer, accumulatedValue: initialOdometer, readAt: new Date(), source: 'manual', userId: user.id },
         });
-      return v;
+      return { ...v, plateWarning };
     });
   }
 
   async update(user: AuthUser, id: string, b: UpdateVehicle) {
     const current = await this.findScoped(user, id);
-    const { siteCode, tires, ...data } = b;
-    const siteId = siteCode ? await this.siteId(user, siteCode) : undefined;
+    const { tires, ...data } = b;
     const attributes = tires ? { ...(current.attributes as object), tires: { ...((current.attributes as { tires?: object }).tires ?? {}), ...tires } } : undefined;
-    return this.prisma.vehicle.update({ where: { id }, data: { ...data, siteId, attributes } });
+    return this.prisma.vehicle.update({ where: { id }, data: { ...data, attributes } });
   }
 
   async setCriticality(user: AuthUser, id: string, criteria: CriticalityCriteria) {
@@ -311,6 +321,89 @@ export class VehiclesService {
         select: { id: true, currentOdometer: true, odometerOffset: true },
       });
     });
+  }
+
+  /** Reubicación entre sedes por necesidad de la operación: cierra la sede vigente y abre la nueva. */
+  async transfer(user: AuthUser, id: string, b: { siteCode: string; reason: string; effectiveAt?: Date }) {
+    const v = await this.findScoped(user, id);
+    if (v.status === 'retired') throw new AppError('RETIRED', 'El vehículo está dado de baja', HttpStatus.UNPROCESSABLE_ENTITY);
+    const siteId = await this.siteId(user, b.siteCode);
+    if (siteId === v.siteId) throw new AppError('SAME_SITE', 'El vehículo ya está en esa sede', HttpStatus.UNPROCESSABLE_ENTITY);
+    const at = b.effectiveAt ?? new Date();
+    if (at.getTime() > Date.now() + 5 * 60_000) throw new AppError('FUTURE_DATE', 'La fecha del traslado no puede ser futura');
+    const open = await this.prisma.vehicleSiteLog.findFirst({ where: { vehicleId: id, endedAt: null } });
+    if (open && at < open.startedAt) throw new AppError('BEFORE_CURRENT', 'La fecha es anterior a la llegada a la sede actual');
+    return this.prisma.$transaction(async (tx) => {
+      await tx.vehicleSiteLog.updateMany({ where: { vehicleId: id, endedAt: null }, data: { endedAt: at } });
+      await tx.vehicleSiteLog.create({ data: { vehicleId: id, siteId, startedAt: at, reason: b.reason, userId: user.id } });
+      return tx.vehicle.update({ where: { id }, data: { siteId }, select: { id: true, site: { select: { code: true, name: true } } } });
+    });
+  }
+
+  /** Conductores habilitados (uno o varios). Reemplaza la lista completa. */
+  async setDrivers(user: AuthUser, id: string, b: { driverIds: string[]; primaryDriverId?: string | null }) {
+    await this.findScoped(user, id);
+    const ids = [...new Set(b.driverIds)];
+    const found = await this.prisma.driver.count({ where: { id: { in: ids }, organizationId: user.organizationId, active: true } });
+    if (found !== ids.length) throw new AppError('UNKNOWN_DRIVER', 'Algún conductor no existe o está inactivo');
+    if (b.primaryDriverId && !ids.includes(b.primaryDriverId)) throw new AppError('PRIMARY_NOT_ASSIGNED', 'El conductor principal debe estar entre los asignados');
+    const primary = b.primaryDriverId ?? ids[0] ?? null;
+    await this.prisma.$transaction([
+      this.prisma.vehicleDriver.deleteMany({ where: { vehicleId: id, driverId: { notIn: ids } } }),
+      ...ids.map((driverId) =>
+        this.prisma.vehicleDriver.upsert({
+          where: { vehicleId_driverId: { vehicleId: id, driverId } },
+          create: { vehicleId: id, driverId, isPrimary: driverId === primary },
+          update: { isPrimary: driverId === primary },
+        }),
+      ),
+    ]);
+    return this.prisma.vehicleDriver.findMany({ where: { vehicleId: id }, include: { driver: { select: { id: true, fullName: true } } }, orderBy: { isPrimary: 'desc' } });
+  }
+
+  /** Cambio de llantas: desgaste, daño en la vía, robo, rotación. */
+  async recordTireChange(
+    user: AuthUser,
+    id: string,
+    b: TireChangeInput & { changedAt?: Date; odometer?: number | null; tireSize?: string | null; tireBrand?: string | null; unitCost?: number | null; supplier?: string | null },
+  ) {
+    const v = await this.findScoped(user, id);
+    if (v.status === 'retired') throw new AppError('RETIRED', 'El vehículo está dado de baja', HttpStatus.UNPROCESSABLE_ENTITY);
+    const tires = ((v.attributes as { tires?: { frontQty?: number; rearQty?: number } }).tires) ?? {};
+    try {
+      validateTireChange(b, { frontQty: tires.frontQty, rearQty: tires.rearQty });
+    } catch (e) {
+      if (e instanceof TireRuleError) throw new AppError(e.code, e.message, HttpStatus.UNPROCESSABLE_ENTITY);
+      throw e;
+    }
+    const changedAt = b.changedAt ?? new Date();
+    if (changedAt.getTime() > Date.now() + 5 * 60_000) throw new AppError('FUTURE_DATE', 'La fecha no puede ser futura');
+    const odometer = b.odometer ?? v.currentOdometer ?? null;
+    const t = tires as { frontSize?: string; rearSize?: string; brand?: string };
+    const change = await this.prisma.tireChange.create({
+      data: {
+        vehicleId: id,
+        changedAt,
+        odometer,
+        axle: b.axle,
+        quantity: b.quantity,
+        positions: b.positions ?? [],
+        reason: b.reason,
+        tireSize: b.tireSize ?? (b.axle === 'front' ? t.frontSize : t.rearSize) ?? null,
+        tireBrand: b.tireBrand ?? t.brand ?? null,
+        unitCost: b.unitCost ?? null,
+        totalCost: b.unitCost != null ? b.unitCost * b.quantity : null,
+        supplier: b.supplier ?? null,
+        notes: b.notes ?? null,
+        userId: user.id,
+      },
+    });
+    // Si trae un kilometraje mayor al vigente, también queda como lectura (validada por las reglas de P2).
+    let reading: { status: string } | null = null;
+    if (b.odometer != null && (v.currentOdometer == null || b.odometer > v.currentOdometer)) {
+      reading = await this.recordReading(user, id, { value: b.odometer, meterType: 'odometer', readAt: changedAt, source: 'manual' }).catch(() => null);
+    }
+    return { ...change, readingStatus: reading?.status ?? null };
   }
 
   async upsertDocument(

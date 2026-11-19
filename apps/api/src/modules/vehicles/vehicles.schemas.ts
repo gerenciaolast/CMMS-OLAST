@@ -30,7 +30,6 @@ const base = {
   loadCapacityKg: z.number().int().min(0).nullable().optional(),
   acquisitionDate: optDate,
   inServiceDate: optDate,
-  assignedDriverId: z.string().uuid().nullable().optional(),
   costCenter: optStr,
   notes: z.string().nullable().optional(),
   tires: TireSpec.optional(),
@@ -45,7 +44,9 @@ export const CreateVehicle = z.object({
 });
 export type CreateVehicle = z.infer<typeof CreateVehicle>;
 
-export const UpdateVehicle = z.object({ ...base, siteCode: base.siteCode.optional(), vehicleModelId: base.vehicleModelId.optional() }).partial();
+/** La sede no se cambia aquí: los traslados van por POST /vehicles/:id/transfer para conservar el historial. */
+const { siteCode: _siteCode, ...editable } = base;
+export const UpdateVehicle = z.object({ ...editable, vehicleModelId: base.vehicleModelId.optional() }).partial().strict();
 export type UpdateVehicle = z.infer<typeof UpdateVehicle>;
 
 export const SetCriticality = z.object({ operationalImpact: score, safety: score, repairCost: score, usage: score });
@@ -89,4 +90,35 @@ export const ListQuery = z.object({
   q: z.string().optional(),
   incomplete: z.enum(['true', 'false']).optional(),
   includeRetired: z.enum(['true', 'false']).optional(),
+});
+
+export const Transfer = z.object({ siteCode: z.string(), reason: z.string().trim().min(3, 'Indique el motivo del traslado'), effectiveAt: z.coerce.date().optional() });
+
+export const SetDrivers = z.object({ driverIds: z.array(z.string().uuid()).max(10), primaryDriverId: z.string().uuid().nullable().optional() });
+
+export const TireChangeBody = z.object({
+  axle: z.enum(['front', 'rear', 'spare']),
+  quantity: z.number().int(),
+  reason: z.enum(['wear', 'road_damage', 'theft', 'rotation', 'other', 'unknown']),
+  positions: z.array(z.string()).optional(),
+  changedAt: z.coerce.date().optional(),
+  odometer: z.number().int().min(0).nullable().optional(),
+  tireSize: optStr,
+  tireBrand: optStr,
+  unitCost: z.number().min(0).nullable().optional(),
+  supplier: optStr,
+  notes: z.string().nullable().optional(),
+});
+
+export const DriverBody = z.object({
+  fullName: z.string().trim().min(3),
+  documentId: optStr,
+  phone: optStr,
+  email: z.string().email().nullable().optional(),
+  licenseNumber: optStr,
+  licenseCategory: optStr,
+  licenseExpiry: optDate,
+  siteCode: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  active: z.boolean().optional(),
 });

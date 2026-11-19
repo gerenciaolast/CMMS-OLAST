@@ -11,6 +11,7 @@
     "api:types": "openapi-typescript http://localhost:3001/api/docs-json -o src/lib/api-types.ts"
   },
   "dependencies": {
+    "@cmms/domain": "workspace:*",
     "@cmms/shared": "workspace:*",
     "lucide-react": "^1.75.0",
     "next": "^15.5.29",

@@ -4,16 +4,16 @@
 
 | Módulo | MVP (Fase 1) | Fase 2 | Fase 3 |
 |---|---|---|---|
-| **Vehículos** | Ficha, criticidad, estados, historial, documentos y vencimientos | Componentes rastreables (motor, caja, baterías) | Costo de ciclo de vida, decisión de reemplazo |
+| **Vehículos** | Ficha, criticidad, estados, historial, traslados entre sedes, documentos y vencimientos, plantilla Excel (descarga/carga) | Componentes rastreables (motor, caja, baterías) | Costo de ciclo de vida, decisión de reemplazo |
 | **Lecturas** | Manual, desde inspección y OT, validaciones · **odómetro diario desde GPS Ituran** | Recorridos horarios Ituran, desde combustible, importación masiva | Eventos de telemática (códigos de falla, conducción) |
 | **Preventivo** | Planes, rutinas por km/h/tiempo, generación automática de OT, previsión | Campañas/recalls, optimización PM asistida | Mantenimiento predictivo con datos de telemática / DTC |
 | **Inspecciones** | Checklist pre-operacional móvil (PWA), bloqueo por crítico | Inspecciones periódicas técnicas con mediciones | Modo offline completo |
 | **Avisos y OT** | Ciclo completo, mano de obra, repuestos, servicios externos, codificación de falla, esperas, retrabajo | Presupuestos y aprobación por monto, firma del proveedor | Portal de proveedores externos |
 | **Repuestos** | Catálogo, kits PM, consumo en OT | Inventario multi-almacén, compras, reorden | Integración ERP |
 | **Combustible** | — | Registro e importación, rendimiento | Integración tarjetas de combustible |
-| **Neumáticos** | — | Ciclo de vida, costo/km | Sensores TPMS |
+| **Neumáticos** | Registro de cambios de llantas (desgaste, daño en vía, robo, rotación) | Seguimiento por número de serie, costo/km por llanta | Sensores TPMS |
 | **Confiabilidad** | KPIs, Pareto, malos actores | RCA (5 porqués) con acciones | Análisis Weibull, RCM asistido |
-| **Conductores** | Registro básico, licencia | Vencimientos de licencias, puntuación de conducción | Integración telemática de conducción |
+| **Conductores** | Registro, licencia, varios conductores por vehículo, carga por Excel | Alertas de vencimiento de licencias, puntuación de conducción | Integración telemática de conducción |
 | **Notificaciones** | Correo + en aplicación | WhatsApp/SMS | Push móvil |
 | **Integraciones** | Exportar a Excel/CSV | API pública documentada | ERP, contabilidad, BI |
 

@@ -82,3 +82,21 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
   if (!res.ok) throw new ApiError(res.status, body.code ?? 'ERROR', body.message ?? 'Error inesperado', body.details);
   return body as T;
 }
+
+/** Descarga binaria autenticada (p. ej. plantillas Excel). */
+export async function apiDownload(path: string, fallbackName: string): Promise<void> {
+  const t = tokenStore.get();
+  const res = await fetch(`${BASE}${path}`, { headers: t ? { authorization: `Bearer ${t.accessToken}` } : {} });
+  if (res.status === 401 && t && (await refresh())) return apiDownload(path, fallbackName);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.code ?? 'ERROR', body.message ?? 'No fue posible descargar');
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

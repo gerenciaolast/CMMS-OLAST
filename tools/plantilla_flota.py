@@ -32,7 +32,7 @@ SITES = {"BOGOTA": "BOG", "CALI": "CAL", "NEIVA": "NEI", "PEREIRA": "PER", "TUNJ
 ESTADOS = ["Operativo", "Operativo con restricción", "Reserva", "Fuera de servicio - mantenimiento",
            "Fuera de servicio - siniestro", "Vendido", "Siniestro pérdida total", "Dado de baja"]
 PROPIEDAD = ["Propio", "Leasing", "Renting", "Tercero"]
-TIPOS = ["CAR", "CPE", "LIV", "MOT", "BUS", "TRC", "REM", "MAQ"]
+TIPOS = ["CAR", "CPE", "LIV", "MCA", "MOT", "BUS", "TRC", "REM", "MAQ"]
 DOCS = [("SOAT", "SOAT"), ("RTM", "Revisión técnico-mecánica"), ("POL", "Póliza todo riesgo / RC"),
         ("SAN", "Concepto sanitario (transporte de medicamentos)")]
 
@@ -45,7 +45,7 @@ COLUMNS = [
     ("Motivo del estado", 26, False, "Obligatorio si está vendido, de baja o fuera de servicio"),
     ("Marca", 12, False, None),
     ("Línea / tipo", 38, False, None),
-    ("Tipo vehículo (código)", 10, False, "CAR carga liviana/mediana · CPE carga pesada >10 t · MOT moto/motocarro · LIV liviano"),
+    ("Tipo vehículo (código)", 10, False, "CAR carga liviana/mediana · CPE carga pesada >10 t · MCA motocarro · MOT motocicleta · LIV liviano"),
     ("Año modelo", 8, True, None),
     ("Servicio", 12, False, "PUBLICO / PARTICULAR"),
     ("Matriculado en", 14, False, None),
@@ -102,7 +102,7 @@ def kg(v):
 def vtype(make, model):
     m = (model or "").upper()
     if (make or "").upper() == "BAJAJ":
-        return "MOT"
+        return "MCA"  # motocarro de carga (placa 123ABC)
     if m.startswith("FVZ"):
         return "CPE"
     return "CAR"
