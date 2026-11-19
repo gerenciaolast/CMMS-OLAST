@@ -50,6 +50,7 @@ export const PRIORITIES = [
 export const VEHICLE_TYPES = [
   { code: 'LIV', name: 'Liviano (automóvil, camioneta)', primaryMeter: 'odometer', maxDailyUsage: 1000 },
   { code: 'CAR', name: 'Carga liviana/mediana (furgón)', primaryMeter: 'odometer', maxDailyUsage: 1200 },
+  { code: 'CPE', name: 'Carga pesada (camión rígido > 10 t)', primaryMeter: 'odometer', maxDailyUsage: 1500 },
   { code: 'TRC', name: 'Tractocamión', primaryMeter: 'odometer', maxDailyUsage: 1500 },
   { code: 'REM', name: 'Remolque / semirremolque', primaryMeter: 'odometer', maxDailyUsage: 1500 },
   { code: 'BUS', name: 'Bus / van de pasajeros', primaryMeter: 'odometer', maxDailyUsage: 1000 },
@@ -61,7 +62,7 @@ export const VEHICLE_TYPES = [
 export const DOCUMENT_TYPES = [
   { code: 'SOAT', name: 'SOAT (seguro obligatorio)', isBlocking: true },
   { code: 'RTM', name: 'Revisión técnico-mecánica y de emisiones', isBlocking: true },
-  { code: 'TPR', name: 'Licencia de tránsito (tarjeta de propiedad)', isBlocking: true },
+  { code: 'TPR', name: 'Licencia de tránsito (tarjeta de propiedad)', isBlocking: false, alertDays: [] },
   { code: 'POL', name: 'Póliza todo riesgo / responsabilidad civil', isBlocking: false },
   { code: 'EXT', name: 'Recarga de extintor', isBlocking: false },
   { code: 'SAN', name: 'Concepto sanitario del vehículo (transporte de medicamentos/alimentos)', isBlocking: false },

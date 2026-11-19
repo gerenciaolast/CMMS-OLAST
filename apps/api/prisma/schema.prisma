@@ -12,20 +12,22 @@ datasource db {
 // ───────────── Organización y seguridad ─────────────
 
 model Organization {
-  id            String   @id @default(uuid()) @db.Uuid
-  name          String
-  taxId         String?  @map("tax_id")
-  countryCode   String   @default("CO") @map("country_code") @db.Char(2)
-  currency      String   @default("COP") @db.Char(3)
-  distanceUnit  String   @default("km") @map("distance_unit")
-  volumeUnit    String   @default("gal") @map("volume_unit")
-  timezone      String   @default("America/Bogota")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  taxId        String?  @map("tax_id")
+  countryCode  String   @default("CO") @map("country_code") @db.Char(2)
+  currency     String   @default("COP") @db.Char(3)
+  distanceUnit String   @default("km") @map("distance_unit")
+  volumeUnit   String   @default("gal") @map("volume_unit")
+  timezone     String   @default("America/Bogota")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  sites Site[]
-  users User[]
-  roles Role[]
+  sites    Site[]
+  users    User[]
+  roles    Role[]
+  vehicles Vehicle[]
+  drivers  Driver[]
 
   @@map("organizations")
 }
@@ -44,6 +46,8 @@ model Site {
 
   organization Organization @relation(fields: [organizationId], references: [id])
   userSites    UserSite[]
+  vehicles     Vehicle[]
+  drivers      Driver[]
 
   @@unique([organizationId, code])
   @@map("sites")
@@ -137,15 +141,15 @@ model AuditLog {
 // ───────────── Catálogos (doc 03 y doc 09) ─────────────
 
 model ComponentCode {
-  id        String  @id @default(uuid()) @db.Uuid
-  code      String  @unique
-  name      String
-  level     Int
-  parentId  String? @map("parent_id") @db.Uuid
-  vmrsCode  String? @map("vmrs_code")
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique
+  name         String
+  level        Int
+  parentId     String? @map("parent_id") @db.Uuid
+  vmrsCode     String? @map("vmrs_code")
   /// Patrón de texto para clasificar historial (migración).
   matchPattern String? @map("match_pattern")
-  active    Boolean @default(true)
+  active       Boolean @default(true)
 
   parent   ComponentCode?  @relation("ComponentTree", fields: [parentId], references: [id])
   children ComponentCode[] @relation("ComponentTree")
@@ -187,33 +191,34 @@ model HoldReason {
 }
 
 model WorkOrderTypeDef {
-  code        String  @id
-  name        String
-  isPlanned   Boolean @map("is_planned")
+  code                  String  @id
+  name                  String
+  isPlanned             Boolean @map("is_planned")
   requiresFailureCoding Boolean @map("requires_failure_coding")
-  description String?
+  description           String?
 
   @@map("work_order_types")
 }
 
 model PriorityDef {
-  code                 String @id
-  name                 String
-  targetResponseHours  Int    @map("target_response_hours")
-  targetResolutionHours Int   @map("target_resolution_hours")
+  code                  String @id
+  name                  String
+  targetResponseHours   Int    @map("target_response_hours")
+  targetResolutionHours Int    @map("target_resolution_hours")
 
   @@map("priorities")
 }
 
 model VehicleType {
-  id             String  @id @default(uuid()) @db.Uuid
-  code           String  @unique
-  name           String
-  primaryMeter   String  @default("odometer") @map("primary_meter")
-  maxDailyUsage  Int     @map("max_daily_usage")
-  active         Boolean @default(true)
+  id            String  @id @default(uuid()) @db.Uuid
+  code          String  @unique
+  name          String
+  primaryMeter  String  @default("odometer") @map("primary_meter")
+  maxDailyUsage Int     @map("max_daily_usage")
+  active        Boolean @default(true)
 
   checklistTemplates ChecklistTemplate[]
+  models             VehicleModel[]
 
   @@map("vehicle_types")
 }
@@ -225,6 +230,8 @@ model DocumentType {
   isBlocking Boolean @default(false) @map("is_blocking")
   alertDays  Int[]   @default([30, 15, 7]) @map("alert_days")
   active     Boolean @default(true)
+
+  documents VehicleDocument[]
 
   @@map("document_types")
 }
@@ -256,4 +263,200 @@ model ChecklistItem {
   template ChecklistTemplate @relation(fields: [checklistTemplateId], references: [id], onDelete: Cascade)
 
   @@map("checklist_items")
+}
+
+// ───────────── Activos: vehículos, lecturas y documentos (Sprint 1 · doc 02 P1, P2, P8, P9) ─────────────
+
+enum VehicleStatus {
+  operational
+  operational_restricted
+  out_of_service_maintenance
+  out_of_service_parts
+  out_of_service_accident
+  out_of_service_administrative
+  reserve
+  retired
+}
+
+enum Ownership {
+  own
+  leasing
+  rental
+  third_party
+}
+
+enum MeterType {
+  odometer
+  hourmeter
+}
+
+enum MeterSource {
+  inspection
+  work_order
+  fuel
+  gps
+  manual
+  import
+}
+
+model VehicleModel {
+  id            String  @id @default(uuid()) @db.Uuid
+  vehicleTypeId String  @map("vehicle_type_id") @db.Uuid
+  make          String
+  model         String
+  fuelType      String? @map("fuel_type")
+  /// Datos técnicos variables (cilindrada, potencia, ejes…).
+  attributes    Json    @default("{}")
+
+  vehicleType VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  vehicles    Vehicle[]
+
+  @@unique([make, model])
+  @@map("vehicle_models")
+}
+
+model Driver {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  siteId          String?   @map("site_id") @db.Uuid
+  userId          String?   @unique @map("user_id") @db.Uuid
+  fullName        String    @map("full_name")
+  documentId      String?   @map("document_id")
+  phone           String?
+  licenseNumber   String?   @map("license_number")
+  licenseCategory String?   @map("license_category")
+  licenseExpiry   DateTime? @map("license_expiry") @db.Date
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  site         Site?        @relation(fields: [siteId], references: [id])
+  vehicles     Vehicle[]
+
+  @@map("drivers")
+}
+
+model Vehicle {
+  id               String        @id @default(uuid()) @db.Uuid
+  organizationId   String        @map("organization_id") @db.Uuid
+  siteId           String        @map("site_id") @db.Uuid
+  vehicleModelId   String        @map("vehicle_model_id") @db.Uuid
+  plate            String
+  internalCode     String?       @map("internal_code")
+  vin              String?
+  engineNumber     String?       @map("engine_number")
+  year             Int?
+  color            String?
+  serviceType      String?       @map("service_type") /// público / particular
+  registrationCity String?       @map("registration_city")
+  ownership        Ownership     @default(own)
+  /// Titular de la licencia de tránsito (empresa, banco del leasing, tercero).
+  titleHolder      String?       @map("title_holder")
+  loadCapacityKg   Int?          @map("load_capacity_kg")
+  criticality      String?       @db.Char(1)
+  criticalityScore Json?         @map("criticality_score")
+  status           VehicleStatus @default(operational)
+  statusReason     String?       @map("status_reason")
+  currentOdometer  Int?          @map("current_odometer")
+  currentHourmeter Int?          @map("current_hourmeter")
+  /// Compensación acumulada por cambios de odómetro (km reales = lectura + offset).
+  odometerOffset   Int           @default(0) @map("odometer_offset")
+  lastReadingAt    DateTime?     @map("last_reading_at") @db.Timestamptz
+  acquisitionDate  DateTime?     @map("acquisition_date") @db.Date
+  acquisitionCost  Decimal?      @map("acquisition_cost") @db.Decimal(14, 2)
+  inServiceDate    DateTime?     @map("in_service_date") @db.Date
+  assignedDriverId String?       @map("assigned_driver_id") @db.Uuid
+  costCenter       String?       @map("cost_center")
+  notes            String?
+  /// Datos variables: llantas (medida, cantidad por eje, marca, índice de carga), etc.
+  attributes       Json          @default("{}")
+  retiredAt        DateTime?     @map("retired_at") @db.Date
+  retirementReason String?       @map("retirement_reason")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  site           Site               @relation(fields: [siteId], references: [id])
+  vehicleModel   VehicleModel       @relation(fields: [vehicleModelId], references: [id])
+  assignedDriver Driver?            @relation(fields: [assignedDriverId], references: [id])
+  statusLog      VehicleStatusLog[]
+  readings       MeterReading[]
+  replacements   MeterReplacement[]
+  documents      VehicleDocument[]
+
+  @@unique([organizationId, plate])
+  @@index([siteId, status])
+  @@map("vehicles")
+}
+
+model VehicleStatusLog {
+  id          String        @id @default(uuid()) @db.Uuid
+  vehicleId   String        @map("vehicle_id") @db.Uuid
+  status      VehicleStatus
+  reason      String?
+  startedAt   DateTime      @map("started_at") @db.Timestamptz
+  endedAt     DateTime?     @map("ended_at") @db.Timestamptz
+  workOrderId String?       @map("work_order_id") @db.Uuid
+  userId      String?       @map("user_id") @db.Uuid
+  source      String        @default("manual") /// manual | auto | import
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, startedAt])
+  @@map("vehicle_status_log")
+}
+
+model MeterReading {
+  id               String      @id @default(uuid()) @db.Uuid
+  vehicleId        String      @map("vehicle_id") @db.Uuid
+  meterType        MeterType   @default(odometer) @map("meter_type")
+  value            Int
+  /// Valor real acumulado (value + offset vigente).
+  accumulatedValue Int         @map("accumulated_value")
+  readAt           DateTime    @map("read_at") @db.Timestamptz
+  source           MeterSource @default(manual)
+  isFlagged        Boolean     @default(false) @map("is_flagged")
+  flagReason       String?     @map("flag_reason")
+  userId           String?     @map("user_id") @db.Uuid
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, meterType, readAt])
+  @@map("meter_readings")
+}
+
+model MeterReplacement {
+  id              String    @id @default(uuid()) @db.Uuid
+  vehicleId       String    @map("vehicle_id") @db.Uuid
+  meterType       MeterType @default(odometer) @map("meter_type")
+  oldFinalValue   Int       @map("old_final_value")
+  newInitialValue Int       @map("new_initial_value")
+  replacedAt      DateTime  @map("replaced_at") @db.Timestamptz
+  reason          String
+  userId          String?   @map("user_id") @db.Uuid
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("meter_replacements")
+}
+
+model VehicleDocument {
+  id             String    @id @default(uuid()) @db.Uuid
+  vehicleId      String    @map("vehicle_id") @db.Uuid
+  documentTypeId String    @map("document_type_id") @db.Uuid
+  number         String?
+  issuer         String?
+  issuedAt       DateTime? @map("issued_at") @db.Date
+  expiresAt      DateTime? @map("expires_at") @db.Date
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentType DocumentType @relation(fields: [documentTypeId], references: [id])
+
+  @@unique([vehicleId, documentTypeId])
+  @@map("vehicle_documents")
 }

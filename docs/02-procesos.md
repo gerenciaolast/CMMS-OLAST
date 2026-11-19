@@ -24,6 +24,7 @@ flowchart LR
 **Reglas de negocio**
 - Placa y VIN únicos. No se borra un vehículo: se da de baja (el historial se conserva para siempre).
 - Un vehículo no puede pasar a OPERATIVO sin: criticidad, plan PM asignado (o marcado explícitamente "sin plan"), lectura inicial.
+- **Excepción de migración:** los vehículos que ya operan se cargan con la plantilla de inventario (`tools/plantilla_flota.py` → `fleet:import`) en su estado real, aunque les falten datos. La ficha muestra los **datos pendientes** y su % de completitud. Los pendientes "requeridos para alarmas" (kilometraje, criticidad, SOAT y técnico-mecánica cuando aplica) deben completarse antes de activar el preventivo (S3).
 - Los componentes de alto valor con número de serie (neumáticos, baterías, motor, caja) pueden registrarse como **componentes rastreables** que se montan/desmontan del vehículo (fase 2).
 
 ---

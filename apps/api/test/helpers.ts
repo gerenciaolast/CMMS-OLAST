@@ -11,13 +11,13 @@ export const TEST_DB = process.env.TEST_DATABASE_URL ?? 'postgresql://cmms:cmms@
 export const RUN = Date.now().toString(36);
 export const ADMIN = { email: `admin-${RUN}@olast.local`, password: 'Admin.Test.2026' };
 
-/** Crea un administrador propio de esta ejecución (con cambio de contraseña pendiente). */
-export async function createRunAdmin(prisma: PrismaClient) {
+/** Crea un usuario propio de esta ejecución con el rol indicado (por defecto, admin con cambio de contraseña pendiente). */
+export async function createRunAdmin(prisma: PrismaClient, roleCode = 'admin', email = ADMIN.email) {
   const org = await prisma.organization.findFirstOrThrow({ where: { name: 'OLAST' } });
-  const role = await prisma.role.findUniqueOrThrow({ where: { organizationId_code: { organizationId: org.id, code: 'admin' } } });
+  const role = await prisma.role.findUniqueOrThrow({ where: { organizationId_code: { organizationId: org.id, code: roleCode } } });
   await prisma.user.create({
-    data: { organizationId: org.id, roleId: role.id, email: ADMIN.email, fullName: 'Admin pruebas',
-      passwordHash: await hash(ADMIN.password), mustChangePassword: true },
+    data: { organizationId: org.id, roleId: role.id, email, fullName: `Pruebas ${roleCode}`,
+      passwordHash: await hash(ADMIN.password), mustChangePassword: roleCode === 'admin' },
   });
 }
 

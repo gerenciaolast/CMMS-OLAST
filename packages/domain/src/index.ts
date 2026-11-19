@@ -4,4 +4,5 @@ export * from './meter-validation';
 export * from './pm-schedule';
 export * from './work-order-state';
 export * from './rework';
+export * from './vehicle';
 export * as kpi from './kpi';

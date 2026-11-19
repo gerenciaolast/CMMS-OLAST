@@ -41,7 +41,7 @@ Los permisos se modelan como **permisos atómicos** (`work_order.close`, `vehicl
 
 | Fase | Sprint | Entregable | Valor para el negocio |
 |---|---|---|---|
-| **0 · Fundaciones** | S0 (1–2 sem) | Repositorio, CI, entornos, autenticación, roles, sedes, catálogos semilla, diseño base de UI | Base técnica lista |
+| **0 · Fundaciones** | S0 ✅ (1–2 sem) | Repositorio, CI, entornos, autenticación, roles, sedes, catálogos semilla, diseño base de UI | Base técnica lista |
 | **1 · MVP** | S1 | Vehículos (ficha, criticidad, estados con historial), tipos y modelos, lecturas con validaciones | Inventario confiable de la flota |
 | | S2 | Avisos + Órdenes de Trabajo (ciclo de estados, mano de obra, repuestos de catálogo, servicios externos, esperas, codificación de falla) | Todo el trabajo queda registrado con su costo |
 | | S3 | Planes PM, rutinas, tareas, cálculo de vencimientos, generación automática de OT, tablero de previsión. **Alarmas PM con lecturas manuales** (inspección diaria del conductor y OT); cuando Ituran quede activo, el odómetro GPS alimenta las mismas alarmas sin cambiar la lógica | El preventivo deja de depender de la memoria |

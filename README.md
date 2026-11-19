@@ -2,7 +2,7 @@
 
 Sistema de Gestión de Mantenimiento Computarizado (CMMS) para la flota de vehículos de **OLAST**.
 
-> **Estado:** modelo aprobado por gerencia · **Sprint 0 (fundaciones) terminado** · siguiente: Sprint 1, flota y lecturas.
+> **Estado:** modelo aprobado por gerencia · Sprint 0 y **Sprint 1 (flota y lecturas) terminados** · siguiente: Sprint 2, avisos y órdenes de trabajo.
 
 ## Objetivo
 
@@ -54,6 +54,16 @@ pnpm dev                                  # API en :3001 · web en :3000
 ```
 
 El primer ingreso del administrador obliga a cambiar la contraseña.
+
+### Carga del inventario de flota
+
+```bash
+# 1. Generar la plantilla pre-llenada desde los archivos de OLAST (fuera del repo: contienen datos internos)
+python3 -I tools/plantilla_flota.py LLANTAS_VEHICULOS.xlsx Plantilla_flota_OLAST.xlsx HOJA_DE_VIDA_MANTTO.xlsx
+# 2. OLAST completa las celdas amarillas (VIN, km, criticidad, SOAT, técnico-mecánica…)
+# 3. Importar (se puede repetir: actualiza por placa y las celdas vacías no borran datos)
+pnpm --filter @cmms/api fleet:import Plantilla_flota_OLAST.xlsx
+```
 
 ### Calidad
 

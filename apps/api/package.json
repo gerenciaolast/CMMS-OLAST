@@ -12,7 +12,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:seed": "ts-node --transpile-only prisma/seed/seed.ts"
+    "prisma:seed": "ts-node --transpile-only prisma/seed/seed.ts",
+    "fleet:import": "ts-node --transpile-only scripts/import-fleet.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed/seed.ts"
@@ -42,6 +43,7 @@
     "@nestjs/swagger": "^11.4.8",
     "@node-rs/argon2": "^2.2.2",
     "@prisma/client": "^6.19.3",
+    "exceljs": "^4.4.0",
     "nestjs-pino": "^4.6.1",
     "pino-http": "^10.5.0",
     "reflect-metadata": "^0.2.2",
