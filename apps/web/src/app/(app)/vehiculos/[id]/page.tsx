@@ -2,13 +2,14 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRightLeft, CheckCircle2, CircleDot, FileText, Gauge, History, IdCard, MapPin, Pencil, ShieldAlert, Truck } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRightLeft, Megaphone, Wrench, CheckCircle2, CircleDot, FileText, Gauge, History, IdCard, MapPin, Pencil, ShieldAlert, Truck } from 'lucide-react';
 import { TIRE_AXLE_LABEL, TIRE_REASON_LABEL, tirePositions, type TireAxle } from '@cmms/domain';
 import type { VehicleStatus } from '@cmms/shared';
 import { Alert, Badge, Button, Card, CriticalityBadge, Field, Modal, Progress, SecondaryButton, Select } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import { OWNERSHIP_LABEL, STATUS_LABEL, STATUS_TONE, day, daysUntil, km, money, type Driver, type VehicleDetail } from '@/lib/fleet';
+import { OWNERSHIP_LABEL, STATUS_LABEL, STATUS_TONE, day, daysUntil, km, money, shortDay, type Driver, type VehicleDetail } from '@/lib/fleet';
+import { PRIORITY_TONE, WO_STATUS_LABEL, WO_STATUS_TONE, WO_TYPE_LABEL, type WorkOrderRow } from '@/lib/maintenance';
 
 type Dialog = null | 'reading' | 'status' | 'criticality' | 'edit' | 'transfer' | 'drivers' | 'tires' | { doc: string };
 interface Site { code: string; name: string }
@@ -75,6 +76,7 @@ export default function VehiclePage() {
   const [sites, setSites] = useState<Site[]>([]);
   const [allDrivers, setAllDrivers] = useState<Driver[]>([]);
   const [axle, setAxle] = useState<TireAxle>('rear');
+  const [orders, setOrders] = useState<WorkOrderRow[] | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -85,6 +87,7 @@ export default function VehiclePage() {
     void api<DocType[]>('/catalog/document-types').then(setDocTypes).catch(() => undefined);
     void api<Site[]>('/sites').then(setSites).catch(() => undefined);
     void api<Driver[]>('/drivers').then(setAllDrivers).catch(() => undefined);
+    void api<WorkOrderRow[]>(`/work-orders?vehicleId=${id}&status=all&take=500`).then(setOrders).catch(() => setOrders([]));
   }, [load]);
 
   const done = async (msg: string) => {
@@ -125,6 +128,7 @@ export default function VehiclePage() {
         </div>
         {!retired && (
           <div className="flex flex-wrap gap-2">
+            {can('work_request.create') && <Link href={`/avisos?vehiculo=${v.id}`}><SecondaryButton className="border-danger/40 text-danger"><Megaphone size={16} /> Reportar falla</SecondaryButton></Link>}
             {can('meter.record') && <SecondaryButton onClick={() => setDialog('reading')}><Gauge size={16} /> Registrar km</SecondaryButton>}
             {can('vehicle.change_status') && <SecondaryButton onClick={() => setDialog('status')}><Truck size={16} /> Cambiar estado</SecondaryButton>}
             {can('vehicle.change_status') && <SecondaryButton onClick={() => setDialog('transfer')}><ArrowRightLeft size={16} /> Trasladar de sede</SecondaryButton>}
@@ -239,6 +243,38 @@ export default function VehiclePage() {
             })}
           </ul>
         </Card>
+
+        {/* Órdenes de trabajo */}
+        {orders && orders.length > 0 && (() => {
+          const total = orders.filter((o) => o.status === 'closed').reduce((a, o) => a + Number(o.totalCost), 0);
+          const corrective = orders.filter((o) => o.status === 'closed' && !['PM', 'INS', 'PDM'].includes(o.type)).reduce((a, o) => a + Number(o.totalCost), 0);
+          return (
+            <Card className="lg:col-span-2">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 font-semibold"><Wrench size={18} /> Órdenes de trabajo ({orders.length})</h2>
+                <p className="text-sm text-muted">Costo acumulado {money(total)} · correctivo {total ? Math.round((corrective / total) * 100) : 0}%</p>
+              </div>
+              <div className="max-h-96 overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-surface text-left text-xs text-muted uppercase"><tr><th className="py-2 pr-3">OT</th><th className="pr-3">Fecha</th><th className="pr-3">Tipo</th><th className="pr-3">Estado</th><th className="pr-3">Descripción</th><th className="pr-3 text-right">Km</th><th className="text-right">Costo</th></tr></thead>
+                  <tbody className="divide-y divide-line">
+                    {[...orders].sort((a, b) => new Date(b.closedAt ?? b.createdAt).getTime() - new Date(a.closedAt ?? a.createdAt).getTime()).map((o) => (
+                      <tr key={o.id}>
+                        <td className="py-2 pr-3 whitespace-nowrap"><Link href={`/ot/${o.id}`} className="font-medium text-brand">{o.number}</Link> <Badge className={PRIORITY_TONE[o.priority]}>{o.priority}</Badge></td>
+                        <td className="pr-3 whitespace-nowrap">{shortDay(o.closedAt ?? o.createdAt)}</td>
+                        <td className="pr-3 whitespace-nowrap">{WO_TYPE_LABEL[o.type] ?? o.type}</td>
+                        <td className="pr-3"><Badge className={WO_STATUS_TONE[o.status]}>{WO_STATUS_LABEL[o.status]}</Badge></td>
+                        <td className="max-w-72 pr-3"><p className="truncate" title={o.description}>{o.description}</p></td>
+                        <td className="pr-3 text-right whitespace-nowrap tabular-nums">{km(o.odometerIn)}</td>
+                        <td className="text-right whitespace-nowrap tabular-nums">{money(o.totalCost)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          );
+        })()}
 
         {/* Conductores */}
         <Card>

@@ -389,6 +389,8 @@ model Vehicle {
   drivers      VehicleDriver[]
   siteHistory  VehicleSiteLog[]
   tireChanges  TireChange[]
+  workRequests WorkRequest[]
+  workOrders   WorkOrder[]
 
   @@unique([organizationId, plate])
   @@index([siteId, status])
@@ -534,8 +536,305 @@ model TireChange {
   userId      String?          @map("user_id") @db.Uuid
   createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
 
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle   Vehicle    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id])
 
   @@index([vehicleId, changedAt])
   @@map("tire_changes")
+}
+
+// ───────────── Avisos y órdenes de trabajo (Sprint 2 · doc 02 P4, P7) ─────────────
+
+/// Numeración correlativa sin huecos por organización, serie y año (AV-2026-000001, OT-2026-000001).
+model Counter {
+  organizationId String @map("organization_id") @db.Uuid
+  series         String
+  year           Int
+  value          Int    @default(0)
+
+  @@id([organizationId, series, year])
+  @@map("counters")
+}
+
+model Supplier {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  taxId          String?  @map("tax_id")
+  kind           String   @default("workshop") /// workshop | parts | dealer | tires | other
+  city           String?
+  contact        String?
+  phone          String?
+  email          String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  workOrders       WorkOrder[]
+  externalServices WorkOrderExternalService[]
+
+  @@unique([organizationId, name])
+  @@map("suppliers")
+}
+
+model Technician {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String?  @unique @map("user_id") @db.Uuid
+  siteId         String?  @map("site_id") @db.Uuid
+  name           String
+  level          String   @default("N2")
+  hourlyCost     Decimal  @default(0) @map("hourly_cost") @db.Decimal(14, 2)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  labor WorkOrderLabor[]
+
+  @@map("technicians")
+}
+
+model Part {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  code           String
+  description    String
+  unit           String   @default("UND")
+  referenceCost  Decimal? @map("reference_cost") @db.Decimal(14, 2)
+  componentCode  String?  @map("component_code")
+  active         Boolean  @default(true)
+
+  @@unique([organizationId, code])
+  @@map("parts")
+}
+
+enum WorkRequestStatus {
+  new
+  in_review
+  approved
+  rejected
+  merged
+}
+
+enum CanOperate {
+  yes
+  restricted
+  no
+}
+
+model WorkRequest {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  number          String
+  vehicleId       String            @map("vehicle_id") @db.Uuid
+  source          String            @default("driver") /// driver | inspection | technician | roadside | accident
+  description     String
+  systemCode      String?           @map("system_code")
+  canOperate      CanOperate        @default(yes) @map("can_operate")
+  consequence     String? /// safety_legal | stops_operation | degraded | no_impact
+  priority        String?
+  status          WorkRequestStatus @default(new)
+  rejectionReason String?           @map("rejection_reason")
+  odometer        Int?
+  workOrderId     String?           @map("work_order_id") @db.Uuid
+  reportedById    String?           @map("reported_by_id") @db.Uuid
+  reportedAt      DateTime          @default(now()) @map("reported_at") @db.Timestamptz
+  reviewedById    String?           @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?         @map("reviewed_at") @db.Timestamptz
+
+  vehicle   Vehicle      @relation(fields: [vehicleId], references: [id])
+  workOrder WorkOrder?   @relation(fields: [workOrderId], references: [id])
+  photos    Attachment[]
+
+  @@unique([organizationId, number])
+  @@index([status, reportedAt])
+  @@map("work_requests")
+}
+
+enum WorkOrderStatus {
+  planned
+  scheduled
+  in_progress
+  on_hold
+  completed
+  closed
+  cancelled
+}
+
+model WorkOrder {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  number          String
+  vehicleId       String          @map("vehicle_id") @db.Uuid
+  siteId          String          @map("site_id") @db.Uuid
+  type            String /// PM | INS | PDM | CP | CE | AUX | SIN | MEJ | CAM
+  priority        String          @default("P3")
+  status          WorkOrderStatus @default(planned)
+  origin          String          @default("manual") /// request | pm | campaign | manual | import
+  description     String
+  workshopType    String          @default("external") @map("workshop_type") /// internal | external
+  supplierId      String?         @map("supplier_id") @db.Uuid
+  odometerIn      Int?            @map("odometer_in")
+  odometerOut     Int?            @map("odometer_out")
+  plannedStart    DateTime?       @map("planned_start") @db.Timestamptz
+  plannedEnd      DateTime?       @map("planned_end") @db.Timestamptz
+  estimatedHours  Decimal?        @map("estimated_hours") @db.Decimal(8, 2)
+  actualStart     DateTime?       @map("actual_start") @db.Timestamptz
+  actualEnd       DateTime?       @map("actual_end") @db.Timestamptz
+  closedAt        DateTime?       @map("closed_at") @db.Timestamptz
+  closedById      String?         @map("closed_by_id") @db.Uuid
+  createdById     String?         @map("created_by_id") @db.Uuid
+  isRework        Boolean         @default(false) @map("is_rework")
+  reworkOfId      String?         @map("rework_of_id") @db.Uuid
+  laborCost       Decimal         @default(0) @map("labor_cost") @db.Decimal(14, 2)
+  partsCost       Decimal         @default(0) @map("parts_cost") @db.Decimal(14, 2)
+  externalCost    Decimal         @default(0) @map("external_cost") @db.Decimal(14, 2)
+  totalCost       Decimal         @default(0) @map("total_cost") @db.Decimal(14, 2)
+  cancelReason    String?         @map("cancel_reason")
+  completionNotes String?         @map("completion_notes")
+  /// Fecha aproximada o datos parciales (migración del historial en Excel).
+  isHistorical    Boolean         @default(false) @map("is_historical")
+  /// Referencia de origen en importaciones (p. ej. "historial:gvr370:12"); evita duplicados al reimportar.
+  sourceRef       String?         @unique @map("source_ref")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  vehicle          Vehicle                    @relation(fields: [vehicleId], references: [id])
+  supplier         Supplier?                  @relation(fields: [supplierId], references: [id])
+  reworkOf         WorkOrder?                 @relation("Rework", fields: [reworkOfId], references: [id])
+  reworks          WorkOrder[]                @relation("Rework")
+  requests         WorkRequest[]
+  tasks            WorkOrderTask[]
+  labor            WorkOrderLabor[]
+  parts            WorkOrderPart[]
+  externalServices WorkOrderExternalService[]
+  holds            WorkOrderHold[]
+  failures         FailureRecord[]
+  events           WorkOrderEvent[]
+  tireChanges      TireChange[]
+  attachments      Attachment[]
+
+  @@unique([organizationId, number])
+  @@index([vehicleId, status])
+  @@index([status, priority])
+  @@map("work_orders")
+}
+
+model WorkOrderTask {
+  id            String  @id @default(uuid()) @db.Uuid
+  workOrderId   String  @map("work_order_id") @db.Uuid
+  sequence      Int
+  description   String
+  status        String  @default("pending") /// pending | done | not_done | finding
+  notDoneReason String? @map("not_done_reason")
+  comment       String?
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@map("work_order_tasks")
+}
+
+model WorkOrderLabor {
+  id           String   @id @default(uuid()) @db.Uuid
+  workOrderId  String   @map("work_order_id") @db.Uuid
+  technicianId String   @map("technician_id") @db.Uuid
+  workDate     DateTime @map("work_date") @db.Date
+  hours        Decimal  @db.Decimal(6, 2)
+  hourlyCost   Decimal  @map("hourly_cost") @db.Decimal(14, 2)
+  cost         Decimal  @db.Decimal(14, 2)
+  comment      String?
+
+  workOrder  WorkOrder  @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  technician Technician @relation(fields: [technicianId], references: [id])
+
+  @@map("work_order_labor")
+}
+
+model WorkOrderPart {
+  id          String  @id @default(uuid()) @db.Uuid
+  workOrderId String  @map("work_order_id") @db.Uuid
+  partId      String? @map("part_id") @db.Uuid
+  description String
+  quantity    Decimal @db.Decimal(10, 2)
+  unitCost    Decimal @map("unit_cost") @db.Decimal(14, 2)
+  totalCost   Decimal @map("total_cost") @db.Decimal(14, 2)
+  source      String  @default("direct_purchase") /// stock | direct_purchase
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@map("work_order_parts")
+}
+
+model WorkOrderExternalService {
+  id            String  @id @default(uuid()) @db.Uuid
+  workOrderId   String  @map("work_order_id") @db.Uuid
+  supplierId    String? @map("supplier_id") @db.Uuid
+  description   String
+  invoiceNumber String? @map("invoice_number")
+  amount        Decimal @db.Decimal(14, 2)
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  supplier  Supplier? @relation(fields: [supplierId], references: [id])
+
+  @@map("work_order_external_services")
+}
+
+model WorkOrderHold {
+  id          String    @id @default(uuid()) @db.Uuid
+  workOrderId String    @map("work_order_id") @db.Uuid
+  reason      String
+  comment     String?
+  startedAt   DateTime  @map("started_at") @db.Timestamptz
+  endedAt     DateTime? @map("ended_at") @db.Timestamptz
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@map("work_order_holds")
+}
+
+model FailureRecord {
+  id            String  @id @default(uuid()) @db.Uuid
+  workOrderId   String  @map("work_order_id") @db.Uuid
+  componentCode String  @map("component_code")
+  failureMode   String? @map("failure_mode")
+  cause         String?
+  action        String?
+  comment       String?
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([componentCode])
+  @@map("failure_records")
+}
+
+/// Bitácora de la OT: cambios de estado y acciones relevantes.
+model WorkOrderEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  workOrderId String   @map("work_order_id") @db.Uuid
+  action      String
+  fromStatus  String?  @map("from_status")
+  toStatus    String?  @map("to_status")
+  comment     String?
+  userId      String?  @map("user_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId, createdAt])
+  @@map("work_order_events")
+}
+
+model Attachment {
+  id            String   @id @default(uuid()) @db.Uuid
+  storageKey    String   @unique @map("storage_key")
+  filename      String
+  mimeType      String   @map("mime_type")
+  size          Int
+  workRequestId String?  @map("work_request_id") @db.Uuid
+  workOrderId   String?  @map("work_order_id") @db.Uuid
+  uploadedById  String?  @map("uploaded_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  workRequest WorkRequest? @relation(fields: [workRequestId], references: [id], onDelete: Cascade)
+  workOrder   WorkOrder?   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
 }

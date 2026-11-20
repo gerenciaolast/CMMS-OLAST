@@ -6,4 +6,5 @@ export * from './work-order-state';
 export * from './rework';
 export * from './vehicle';
 export * from './tires';
+export * from './work-order-flow';
 export * as kpi from './kpi';

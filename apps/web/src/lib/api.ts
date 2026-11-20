@@ -101,3 +101,12 @@ export async function apiDownload(path: string, fallbackName: string): Promise<v
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+/** URL local (blob) de un archivo protegido, para <img>. */
+export async function apiObjectUrl(path: string): Promise<string> {
+  const t = tokenStore.get();
+  const res = await fetch(`${BASE}${path}`, { headers: t ? { authorization: `Bearer ${t.accessToken}` } : {} });
+  if (res.status === 401 && t && (await refresh())) return apiObjectUrl(path);
+  if (!res.ok) throw new ApiError(res.status, 'ERROR', 'No fue posible cargar el archivo');
+  return URL.createObjectURL(await res.blob());
+}

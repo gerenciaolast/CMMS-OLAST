@@ -43,7 +43,7 @@ Los permisos se modelan como **permisos atómicos** (`work_order.close`, `vehicl
 |---|---|---|---|
 | **0 · Fundaciones** | S0 ✅ (1–2 sem) | Repositorio, CI, entornos, autenticación, roles, sedes, catálogos semilla, diseño base de UI | Base técnica lista |
 | **1 · MVP** | S1 | Vehículos (ficha, criticidad, estados con historial), tipos y modelos, lecturas con validaciones | Inventario confiable de la flota |
-| | S2 | Avisos + Órdenes de Trabajo (ciclo de estados, mano de obra, repuestos de catálogo, servicios externos, esperas, codificación de falla) | Todo el trabajo queda registrado con su costo |
+| | S2 ✅ | Avisos + Órdenes de Trabajo (ciclo de estados, mano de obra, repuestos de catálogo, servicios externos, esperas, codificación de falla) | Todo el trabajo queda registrado con su costo · **historial 2024–2026 migrado (409 OT)** |
 | | S3 | Planes PM, rutinas, tareas, cálculo de vencimientos, generación automática de OT, tablero de previsión. **Alarmas PM con lecturas manuales** (inspección diaria del conductor y OT); cuando Ituran quede activo, el odómetro GPS alimenta las mismas alarmas sin cambiar la lógica | El preventivo deja de depender de la memoria |
 | | S3+ | **Integración Ituran** (depende de que Ituran habilite credenciales/IP): job horario de odómetro, km diario y horario calculados, alerta de vehículo sin reporte | Alarmas PM automáticas y confiables, sin digitación |
 | | S4 | Inspección pre-operacional móvil (PWA), bloqueo por defecto crítico, documentos y alertas de vencimiento, notificaciones por correo | Seguridad vial y cumplimiento legal |

@@ -108,6 +108,7 @@ export const TireChangeBody = z.object({
   unitCost: z.number().min(0).nullable().optional(),
   supplier: optStr,
   notes: z.string().nullable().optional(),
+  workOrderId: z.string().uuid().nullable().optional(),
 });
 
 export const DriverBody = z.object({

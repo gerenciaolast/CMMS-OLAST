@@ -13,7 +13,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "ts-node --transpile-only prisma/seed/seed.ts",
-    "fleet:import": "ts-node --transpile-only scripts/import-fleet.ts"
+    "fleet:import": "ts-node --transpile-only scripts/import-fleet.ts",
+    "history:import": "ts-node --transpile-only scripts/import-history.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed/seed.ts"

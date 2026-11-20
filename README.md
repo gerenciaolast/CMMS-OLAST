@@ -2,7 +2,7 @@
 
 Sistema de Gestión de Mantenimiento Computarizado (CMMS) para la flota de vehículos de **OLAST**.
 
-> **Estado:** modelo aprobado por gerencia · Sprint 0 y **Sprint 1 (flota y lecturas) terminados** · siguiente: Sprint 2, avisos y órdenes de trabajo.
+> **Estado:** modelo aprobado por gerencia · Sprints 0, 1 y **2 (avisos y órdenes de trabajo) terminados** · siguiente: Sprint 3, preventivo y alarmas.
 
 ## Objetivo
 
@@ -63,6 +63,15 @@ python3 -I tools/plantilla_flota.py LLANTAS_VEHICULOS.xlsx Plantilla_flota_OLAST
 # 2. OLAST completa las celdas amarillas (VIN, km, criticidad, SOAT, técnico-mecánica…)
 # 3. Importar (se puede repetir: actualiza por placa y las celdas vacías no borran datos)
 pnpm --filter @cmms/api fleet:import Plantilla_flota_OLAST.xlsx
+# (También se descarga y se sube desde la app: Flota → Plantilla Excel)
+```
+
+### Migración del historial de mantenimiento
+
+```bash
+# Crea una OT cerrada (histórica) por cada intervención del Excel, con la codificación del catálogo.
+# Idempotente: se puede repetir sin duplicar.
+pnpm --filter @cmms/api history:import HOJA_DE_VIDA_DE_MANTTO_DE_VEHICULOS.xlsx
 ```
 
 ### Calidad

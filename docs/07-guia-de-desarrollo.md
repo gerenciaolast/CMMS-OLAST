@@ -164,6 +164,11 @@ Luego seguir el orden de sprints del [doc 06](06-alcance-roles-y-roadmap.md#3-ho
 - Los colores de estado (verde OK, ámbar alerta, rojo peligro) son funcionales del CMMS y no reemplazan la paleta de marca.
 - El manual en PDF no se sube al repositorio.
 
+## 7.2 Archivos (fotos de avisos)
+
+- `StorageService` (`apps/api/src/common/storage.ts`): en desarrollo guarda en disco (`UPLOAD_DIR`); en producción se reemplaza por S3/MinIO con la misma interfaz.
+- Solo fotos JPG/PNG/WEBP (se verifica la firma del archivo, no la extensión), máximo 8 MB y 3 por aviso. Se sirven solo con sesión (`GET /api/v1/attachments/:id`), respetando la visibilidad por sede.
+
 ## 8. Migración de datos iniciales
 
 Plantillas de importación (CSV/Excel) con validación previa y reporte de errores por fila, para:

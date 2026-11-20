@@ -365,7 +365,7 @@ export class VehiclesService {
   async recordTireChange(
     user: AuthUser,
     id: string,
-    b: TireChangeInput & { changedAt?: Date; odometer?: number | null; tireSize?: string | null; tireBrand?: string | null; unitCost?: number | null; supplier?: string | null },
+    b: TireChangeInput & { changedAt?: Date; odometer?: number | null; tireSize?: string | null; tireBrand?: string | null; unitCost?: number | null; supplier?: string | null; workOrderId?: string | null },
   ) {
     const v = await this.findScoped(user, id);
     if (v.status === 'retired') throw new AppError('RETIRED', 'El vehículo está dado de baja', HttpStatus.UNPROCESSABLE_ENTITY);
@@ -395,6 +395,7 @@ export class VehiclesService {
         totalCost: b.unitCost != null ? b.unitCost * b.quantity : null,
         supplier: b.supplier ?? null,
         notes: b.notes ?? null,
+        workOrderId: b.workOrderId ? (await this.prisma.workOrder.findFirstOrThrow({ where: { id: b.workOrderId, vehicleId: id } })).id : null,
         userId: user.id,
       },
     });
