@@ -342,55 +342,58 @@ model Driver {
 }
 
 model Vehicle {
-  id               String        @id @default(uuid()) @db.Uuid
-  organizationId   String        @map("organization_id") @db.Uuid
-  siteId           String        @map("site_id") @db.Uuid
-  vehicleModelId   String        @map("vehicle_model_id") @db.Uuid
-  plate            String
-  internalCode     String?       @map("internal_code")
-  vin              String?
-  engineNumber     String?       @map("engine_number")
-  year             Int?
-  color            String?
-  serviceType      String?       @map("service_type") /// público / particular
-  registrationCity String?       @map("registration_city")
-  ownership        Ownership     @default(own)
+  id                String        @id @default(uuid()) @db.Uuid
+  organizationId    String        @map("organization_id") @db.Uuid
+  siteId            String        @map("site_id") @db.Uuid
+  vehicleModelId    String        @map("vehicle_model_id") @db.Uuid
+  plate             String
+  internalCode      String?       @map("internal_code")
+  vin               String?
+  engineNumber      String?       @map("engine_number")
+  year              Int?
+  color             String?
+  serviceType       String?       @map("service_type") /// público / particular
+  registrationCity  String?       @map("registration_city")
+  ownership         Ownership     @default(own)
   /// Titular de la licencia de tránsito (empresa, banco del leasing, tercero).
-  titleHolder      String?       @map("title_holder")
-  loadCapacityKg   Int?          @map("load_capacity_kg")
-  criticality      String?       @db.Char(1)
-  criticalityScore Json?         @map("criticality_score")
-  status           VehicleStatus @default(operational)
-  statusReason     String?       @map("status_reason")
-  currentOdometer  Int?          @map("current_odometer")
-  currentHourmeter Int?          @map("current_hourmeter")
+  titleHolder       String?       @map("title_holder")
+  loadCapacityKg    Int?          @map("load_capacity_kg")
+  criticality       String?       @db.Char(1)
+  criticalityScore  Json?         @map("criticality_score")
+  status            VehicleStatus @default(operational)
+  statusReason      String?       @map("status_reason")
+  currentOdometer   Int?          @map("current_odometer")
+  currentHourmeter  Int?          @map("current_hourmeter")
   /// Compensación acumulada por cambios de odómetro (km reales = lectura + offset).
-  odometerOffset   Int           @default(0) @map("odometer_offset")
-  lastReadingAt    DateTime?     @map("last_reading_at") @db.Timestamptz
-  acquisitionDate  DateTime?     @map("acquisition_date") @db.Date
-  acquisitionCost  Decimal?      @map("acquisition_cost") @db.Decimal(14, 2)
-  inServiceDate    DateTime?     @map("in_service_date") @db.Date
-  costCenter       String?       @map("cost_center")
-  notes            String?
+  odometerOffset    Int           @default(0) @map("odometer_offset")
+  lastReadingAt     DateTime?     @map("last_reading_at") @db.Timestamptz
+  acquisitionDate   DateTime?     @map("acquisition_date") @db.Date
+  acquisitionCost   Decimal?      @map("acquisition_cost") @db.Decimal(14, 2)
+  inServiceDate     DateTime?     @map("in_service_date") @db.Date
+  costCenter        String?       @map("cost_center")
+  notes             String?
+  maintenancePlanId String?       @map("maintenance_plan_id") @db.Uuid
   /// Datos variables: llantas (medida, cantidad por eje, marca, índice de carga), etc.
-  attributes       Json          @default("{}")
-  retiredAt        DateTime?     @map("retired_at") @db.Date
-  retirementReason String?       @map("retirement_reason")
-  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  attributes        Json          @default("{}")
+  retiredAt         DateTime?     @map("retired_at") @db.Date
+  retirementReason  String?       @map("retirement_reason")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
-  organization Organization       @relation(fields: [organizationId], references: [id])
-  site         Site               @relation(fields: [siteId], references: [id])
-  vehicleModel VehicleModel       @relation(fields: [vehicleModelId], references: [id])
-  statusLog    VehicleStatusLog[]
-  readings     MeterReading[]
-  replacements MeterReplacement[]
-  documents    VehicleDocument[]
-  drivers      VehicleDriver[]
-  siteHistory  VehicleSiteLog[]
-  tireChanges  TireChange[]
-  workRequests WorkRequest[]
-  workOrders   WorkOrder[]
+  organization    Organization        @relation(fields: [organizationId], references: [id])
+  site            Site                @relation(fields: [siteId], references: [id])
+  vehicleModel    VehicleModel        @relation(fields: [vehicleModelId], references: [id])
+  statusLog       VehicleStatusLog[]
+  readings        MeterReading[]
+  replacements    MeterReplacement[]
+  documents       VehicleDocument[]
+  drivers         VehicleDriver[]
+  siteHistory     VehicleSiteLog[]
+  tireChanges     TireChange[]
+  workRequests    WorkRequest[]
+  workOrders      WorkOrder[]
+  maintenancePlan MaintenancePlan?    @relation(fields: [maintenancePlanId], references: [id])
+  pmSchedules     VehiclePmSchedule[]
 
   @@unique([organizationId, plate])
   @@index([siteId, status])
@@ -692,6 +695,7 @@ model WorkOrder {
   completionNotes String?         @map("completion_notes")
   /// Fecha aproximada o datos parciales (migración del historial en Excel).
   isHistorical    Boolean         @default(false) @map("is_historical")
+  pmRoutineId     String?         @map("pm_routine_id") @db.Uuid
   /// Referencia de origen en importaciones (p. ej. "historial:gvr370:12"); evita duplicados al reimportar.
   sourceRef       String?         @unique @map("source_ref")
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
@@ -711,6 +715,7 @@ model WorkOrder {
   events           WorkOrderEvent[]
   tireChanges      TireChange[]
   attachments      Attachment[]
+  pmRoutine        PmRoutine?                 @relation(fields: [pmRoutineId], references: [id])
 
   @@unique([organizationId, number])
   @@index([vehicleId, status])
@@ -837,4 +842,88 @@ model Attachment {
   workOrder   WorkOrder?   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
 
   @@map("attachments")
+}
+
+// ───────────── Mantenimiento preventivo (Sprint 3 · doc 02 P5) ─────────────
+
+model MaintenancePlan {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  description    String?
+  /// Fuente o justificación (manual, garantía, historial).
+  basis          String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  routines PmRoutine[]
+  vehicles Vehicle[]
+
+  @@unique([organizationId, code])
+  @@map("maintenance_plans")
+}
+
+model PmRoutine {
+  id               String   @id @default(uuid()) @db.Uuid
+  planId           String   @map("plan_id") @db.Uuid
+  code             String /// A, B, C, D
+  name             String
+  intervalDistance Int?     @map("interval_distance")
+  intervalHours    Int?     @map("interval_hours")
+  intervalDays     Int?     @map("interval_days")
+  tolerancePct     Decimal  @default(0.10) @map("tolerance_pct") @db.Decimal(4, 3)
+  generateAtPct    Decimal  @default(0.90) @map("generate_at_pct") @db.Decimal(4, 3)
+  /// Códigos de rutinas que esta incluye (C incluye B y A).
+  includes         String[]
+  estimatedHours   Decimal? @map("estimated_hours") @db.Decimal(6, 2)
+  sequence         Int      @default(0)
+
+  plan       MaintenancePlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  tasks      PmRoutineTask[]
+  schedules  VehiclePmSchedule[]
+  workOrders WorkOrder[]
+
+  @@unique([planId, code])
+  @@map("pm_routines")
+}
+
+model PmRoutineTask {
+  id            String  @id @default(uuid()) @db.Uuid
+  routineId     String  @map("routine_id") @db.Uuid
+  sequence      Int
+  description   String
+  componentCode String? @map("component_code")
+  /// Por qué existe la tarea (falla frecuente en el historial, garantía, manual…).
+  rationale     String?
+
+  routine PmRoutine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  @@map("pm_routine_tasks")
+}
+
+model VehiclePmSchedule {
+  id                String    @id @default(uuid()) @db.Uuid
+  vehicleId         String    @map("vehicle_id") @db.Uuid
+  routineId         String    @map("routine_id") @db.Uuid
+  lastDoneAt        DateTime  @map("last_done_at") @db.Timestamptz
+  lastDoneMeter     Int       @map("last_done_meter")
+  /// Línea base estimada (al asignar el plan) hasta que se registre una ejecución real.
+  baselineEstimated Boolean   @default(true) @map("baseline_estimated")
+  nextDueMeter      Int?      @map("next_due_meter")
+  nextDueDate       DateTime? @map("next_due_date") @db.Timestamptz
+  projectedDueDate  DateTime? @map("projected_due_date") @db.Timestamptz
+  pctConsumed       Decimal   @default(0) @map("pct_consumed") @db.Decimal(7, 4)
+  drivingDimension  String?   @map("driving_dimension")
+  status            String    @default("ok") /// ok | upcoming | due | overdue
+  openWorkOrderId   String?   @map("open_work_order_id") @db.Uuid
+  computedAt        DateTime? @map("computed_at") @db.Timestamptz
+
+  vehicle Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  routine PmRoutine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, routineId])
+  @@index([status])
+  @@map("vehicle_pm_schedules")
 }

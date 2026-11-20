@@ -9,9 +9,11 @@ import { Alert, Badge, Button, Card, CriticalityBadge, Field, Modal, Progress, S
 import { api, ApiError } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { OWNERSHIP_LABEL, STATUS_LABEL, STATUS_TONE, day, daysUntil, km, money, shortDay, type Driver, type VehicleDetail } from '@/lib/fleet';
-import { PRIORITY_TONE, WO_STATUS_LABEL, WO_STATUS_TONE, WO_TYPE_LABEL, type WorkOrderRow } from '@/lib/maintenance';
+import { PRIORITY_TONE, WO_STATUS_LABEL, WO_STATUS_TONE, WO_TYPE_LABEL, type PmPlan, type PmScheduleRow, type WorkOrderRow } from '@/lib/maintenance';
+import { PmBadge, PmBar } from '@/components/pm';
+import { CalendarClock } from 'lucide-react';
 
-type Dialog = null | 'reading' | 'status' | 'criticality' | 'edit' | 'transfer' | 'drivers' | 'tires' | { doc: string };
+type Dialog = null | 'reading' | 'status' | 'criticality' | 'edit' | 'transfer' | 'drivers' | 'tires' | 'plan' | { doc: string } | { baseline: PmScheduleRow };
 interface Site { code: string; name: string }
 interface DocType { code: string; name: string; isBlocking: boolean; alertDays: number[] }
 
@@ -77,17 +79,27 @@ export default function VehiclePage() {
   const [allDrivers, setAllDrivers] = useState<Driver[]>([]);
   const [axle, setAxle] = useState<TireAxle>('rear');
   const [orders, setOrders] = useState<WorkOrderRow[] | null>(null);
+  const [pm, setPm] = useState<{ plan: { id: string; code: string; name: string } | null; schedules: PmScheduleRow[] } | null>(null);
+  const [plans, setPlans] = useState<PmPlan[]>([]);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const load = useCallback(() => api<VehicleDetail>(`/vehicles/${id}`).then(setV).catch((e) => setLoadError(errorText(e))), [id]);
+  const load = useCallback(
+    () =>
+      Promise.all([
+        api<VehicleDetail>(`/vehicles/${id}`).then(setV),
+        api<{ plan: { id: string; code: string; name: string } | null; schedules: PmScheduleRow[] }>(`/vehicles/${id}/pm`).then(setPm).catch(() => undefined),
+        api<WorkOrderRow[]>(`/work-orders?vehicleId=${id}&status=all&take=500`).then(setOrders).catch(() => setOrders([])),
+      ]).catch((e) => setLoadError(errorText(e))),
+    [id],
+  );
   useEffect(() => {
     void load();
     void api<DocType[]>('/catalog/document-types').then(setDocTypes).catch(() => undefined);
     void api<Site[]>('/sites').then(setSites).catch(() => undefined);
     void api<Driver[]>('/drivers').then(setAllDrivers).catch(() => undefined);
-    void api<WorkOrderRow[]>(`/work-orders?vehicleId=${id}&status=all&take=500`).then(setOrders).catch(() => setOrders([]));
+    void api<PmPlan[]>('/pm/plans').then(setPlans).catch(() => undefined);
   }, [load]);
 
   const done = async (msg: string) => {
@@ -243,6 +255,39 @@ export default function VehiclePage() {
             })}
           </ul>
         </Card>
+
+        {/* Preventivo */}
+        {pm && (
+          <Card className="lg:col-span-2">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 font-semibold"><CalendarClock size={18} /> Mantenimiento preventivo</h2>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-muted">{pm.plan ? `Plan ${pm.plan.name}` : 'Sin plan asignado'}</span>
+                {can('pm_plan.manage') && !retired && <button className="font-medium text-brand hover:underline" onClick={() => setDialog('plan')}>{pm.plan ? 'Cambiar' : 'Asignar plan'}</button>}
+              </div>
+            </div>
+            {pm.schedules.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-xs text-muted uppercase"><tr><th className="py-2 pr-3">Rutina</th><th className="pr-3">Consumido</th><th className="pr-3">Estado</th><th className="pr-3">Última ejecución</th><th className="pr-3 text-right">Próximo km</th><th className="pr-3">Límite por tiempo</th><th /></tr></thead>
+                  <tbody className="divide-y divide-line">
+                    {pm.schedules.map((s) => (
+                      <tr key={s.id}>
+                        <td className="py-2 pr-3 font-medium">{s.routine.name}<p className="text-xs font-normal text-muted">cada {s.routine.intervalDistance?.toLocaleString('es-CO')} km o {s.routine.intervalDays} días</p></td>
+                        <td className="pr-3"><PmBar pct={Number(s.pctConsumed)} status={s.status} /></td>
+                        <td className="pr-3"><PmBadge status={s.status} />{s.openWorkOrderId && <Link href={`/ot/${s.openWorkOrderId}`} className="ml-2 text-xs font-medium text-brand">OT</Link>}</td>
+                        <td className="pr-3 whitespace-nowrap">{shortDay(s.lastDoneAt)} · {km(s.lastDoneMeter)}{s.baselineEstimated && <span className="block text-xs text-warn">estimada</span>}</td>
+                        <td className="pr-3 text-right whitespace-nowrap tabular-nums">{km(s.nextDueMeter)}</td>
+                        <td className="pr-3 whitespace-nowrap">{shortDay(s.nextDueDate)}</td>
+                        <td className="text-right">{can('pm_plan.manage') && !retired && <button className="text-xs font-medium text-brand hover:underline" onClick={() => setDialog({ baseline: s })}>Registrar última ejecución</button>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* Órdenes de trabajo */}
         {orders && orders.length > 0 && (() => {
@@ -401,6 +446,42 @@ export default function VehiclePage() {
       </div>
 
       {/* Diálogos */}
+      <Modal title="Plan de mantenimiento preventivo" open={dialog === 'plan'} onClose={() => setDialog(null)}>
+        <DialogForm
+          submitLabel="Guardar plan"
+          onSubmit={async (f) => {
+            const planId = String(f.get('planId') ?? '') || null;
+            const r = await api<{ generated?: string[] }>(`/vehicles/${v.id}/pm-plan`, { method: 'PUT', json: { planId } });
+            await done(planId ? `Plan asignado.${r.generated?.length ? ` OT generadas: ${r.generated.join(', ')}` : ''} Confirme la última ejecución de cada rutina.` : 'Plan retirado');
+          }}
+        >
+          <Select label="Plan" name="planId" defaultValue={pm?.plan?.id ?? ''}>
+            <option value="">Sin plan</option>
+            {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </Select>
+          <p className="text-xs text-muted">La línea base se estima con el último preventivo del historial; luego se corrige con «Registrar última ejecución».</p>
+        </DialogForm>
+      </Modal>
+
+      <Modal title="Última ejecución de la rutina" open={typeof dialog === 'object' && dialog !== null && 'baseline' in dialog} onClose={() => setDialog(null)}>
+        {typeof dialog === 'object' && dialog && 'baseline' in dialog && (
+          <DialogForm
+            submitLabel="Guardar"
+            onSubmit={async (f) => {
+              const r = await api<{ generated: string[] }>(`/vehicles/${v.id}/pm/${dialog.baseline.routine.id}/baseline`, {
+                method: 'PUT',
+                json: { doneAt: new Date(String(f.get('doneAt'))).toISOString(), meter: Number(f.get('meter')) },
+              });
+              await done(`Última ejecución registrada.${r.generated.length ? ` OT generadas: ${r.generated.join(', ')}` : ''}`);
+            }}
+          >
+            <p className="text-sm">{dialog.baseline.routine.name}: ¿cuándo y con qué kilometraje se hizo por última vez? Si es una rutina mayor, también actualiza las que incluye.</p>
+            <Field label="Fecha" name="doneAt" type="date" required defaultValue={dialog.baseline.lastDoneAt.slice(0, 10)} />
+            <Field label={`Kilometraje (vigente ${km(v.currentOdometer)})`} name="meter" type="number" min={0} required defaultValue={dialog.baseline.lastDoneMeter} />
+          </DialogForm>
+        )}
+      </Modal>
+
       <Modal title="Trasladar de sede" open={dialog === 'transfer'} onClose={() => setDialog(null)}>
         <DialogForm
           submitLabel="Registrar traslado"
@@ -597,11 +678,11 @@ export default function VehiclePage() {
       </Modal>
 
       <Modal
-        title={typeof dialog === 'object' && dialog ? docTypes.find((t) => t.code === dialog.doc)?.name ?? 'Documento' : 'Documento'}
-        open={typeof dialog === 'object' && dialog !== null}
+        title={typeof dialog === 'object' && dialog && 'doc' in dialog ? docTypes.find((t) => t.code === dialog.doc)?.name ?? 'Documento' : 'Documento'}
+        open={typeof dialog === 'object' && dialog !== null && 'doc' in dialog}
         onClose={() => setDialog(null)}
       >
-        {typeof dialog === 'object' && dialog && (
+        {typeof dialog === 'object' && dialog && 'doc' in dialog && (
           <DialogForm
             submitLabel="Guardar documento"
             onSubmit={async (f) => {

@@ -20,6 +20,7 @@ import { AuthUser, siteScope } from '../../common/auth.decorators';
 import { nextDocumentNumber } from '../../common/counters';
 import { setVehicleStatus } from '../../common/vehicle-status';
 import { VehiclesService } from '../vehicles/vehicles.service';
+import { PmService } from '../pm/pm.service';
 
 const EDITABLE: WorkOrderStatus[] = ['planned', 'scheduled', 'in_progress', 'on_hold', 'completed'];
 const ACTION_LABEL: Record<string, string> = {
@@ -66,7 +67,7 @@ export interface CreateOrderInput {
 
 @Injectable()
 export class WorkOrdersService {
-  constructor(private readonly prisma: PrismaService, private readonly vehicles: VehiclesService) {}
+  constructor(private readonly prisma: PrismaService, private readonly vehicles: VehiclesService, private readonly pm: PmService) {}
 
   private async scoped(user: AuthUser, id: string) {
     const wo = await this.prisma.workOrder.findFirst({ where: { id, organizationId: user.organizationId, vehicle: siteScope(user) } });
@@ -165,7 +166,7 @@ export class WorkOrdersService {
     }
 
     const now = new Date();
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const data: Prisma.WorkOrderUpdateInput = { status: next };
       if (action === 'schedule') Object.assign(data, { plannedStart: b.plannedStart, plannedEnd: b.plannedEnd ?? null, estimatedHours: b.estimatedHours ?? wo.estimatedHours });
       if (action === 'start') Object.assign(data, { actualStart: wo.actualStart ?? now, odometerIn: b.odometerIn ?? wo.odometerIn ?? wo.vehicle.currentOdometer });
@@ -202,8 +203,12 @@ export class WorkOrdersService {
         const nextStatus = vehicleStatusForWorkOrderEvent(vehicle.status, kind, { holdReason: b.reason, otherActiveOrders: others });
         if (nextStatus) await setVehicleStatus(tx, wo.vehicleId, nextStatus, { reason: `${wo.number}: ${ACTION_LABEL[action]}`, userId: user.id, workOrderId: id, at: now });
       }
+      // OT preventiva cerrada: reinicia la rutina y las que incluye.
+      if (action === 'close' && wo.pmRoutineId) await this.pm.onWorkOrderClosed(tx, id);
       return updated;
     });
+    if ((action === 'close' || action === 'cancel') && wo.pmRoutineId) await this.pm.recomputeVehicle(wo.vehicleId).catch(() => undefined);
+    return result;
   }
 
   private async recompute(tx: Prisma.TransactionClient, id: string) {

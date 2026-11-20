@@ -2,7 +2,7 @@
 
 Sistema de Gestión de Mantenimiento Computarizado (CMMS) para la flota de vehículos de **OLAST**.
 
-> **Estado:** modelo aprobado por gerencia · Sprints 0, 1 y **2 (avisos y órdenes de trabajo) terminados** · siguiente: Sprint 3, preventivo y alarmas.
+> **Estado:** modelo aprobado por gerencia · Sprints 0 a **3 (preventivo y alarmas) terminados** · siguiente: Sprint 4, inspección diaria y documentos.
 
 ## Objetivo
 
@@ -26,6 +26,7 @@ Basado en ISO 55000, EN 13306, ISO 14224, VMRS (ATA/TMC), SAE JA1011 (RCM), mét
 | 06 | [Alcance, roles y hoja de ruta](docs/06-alcance-roles-y-roadmap.md) | Módulos por fase, matriz de permisos, sprints, backlog del MVP, Definition of Done |
 | 07 | [Guía de desarrollo](docs/07-guia-de-desarrollo.md) | Arquitectura, stack, estructura del repositorio, convenciones, pruebas, Sprint 0 paso a paso |
 | 08 | [Decisiones pendientes](docs/08-decisiones-pendientes.md) | Preguntas para OLAST, respuestas recibidas y lista de aprobación |
+| 10 | [Planes de mantenimiento preventivo](docs/10-planes-de-mantenimiento-preventivo.md) | 5 planes por familia (6.000 / 10.000 / 5.000 / 3.000 km), fuentes y tareas que vienen del historial |
 | 09 | [Catálogo de componentes y análisis del historial](docs/09-catalogo-componentes-y-analisis-historial.md) | Catálogo OLAST (22 sistemas, 106 componentes, compatible con VMRS), hallazgos del historial 2024–2026 |
 
 Datos semilla en [`data/catalogos/`](data/catalogos/) · herramienta de migración en [`tools/`](tools/).

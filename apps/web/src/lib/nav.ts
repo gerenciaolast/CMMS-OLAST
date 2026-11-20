@@ -16,7 +16,7 @@ export const NAV: NavItem[] = [
   { href: '/conductores', label: 'Conductores', icon: IdCard, permission: 'vehicle.view', sprint: null },
   { href: '/avisos', label: 'Avisos de falla', icon: Megaphone, permission: 'work_request.create', sprint: null },
   { href: '/ot', label: 'Órdenes de trabajo', icon: Wrench, permission: 'work_order.view', sprint: null },
-  { href: '/preventivo', label: 'Preventivo', icon: CalendarClock, permission: 'pm_plan.manage', sprint: 'S3' },
+  { href: '/preventivo', label: 'Preventivo', icon: CalendarClock, permission: 'work_order.view', sprint: null },
   { href: '/inspeccion', label: 'Inspección diaria', icon: ClipboardCheck, permission: 'inspection.perform', sprint: 'S4' },
   { href: '/kpi', label: 'Indicadores', icon: Gauge, permission: 'kpi.view', sprint: 'S5' },
   { href: '/talleres', label: 'Talleres y técnicos', icon: Factory, permission: 'work_order.view', sprint: null },

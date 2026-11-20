@@ -13,6 +13,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { PmModule } from './modules/pm/pm.module';
 
 @Module({})
 export class AppModule {
@@ -35,6 +36,7 @@ export class AppModule {
         OrganizationModule,
         VehiclesModule,
         MaintenanceModule,
+        PmModule,
       ],
       controllers: [HealthController],
       providers: [

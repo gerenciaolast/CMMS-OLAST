@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { hash } from '@node-rs/argon2';
 import { DEFAULT_ROLES } from '@cmms/shared';
 import * as C from './catalogs';
+import { PM_PLANS } from './pm-plans';
 
 const prisma = new PrismaClient();
 const CATALOG_DIR = join(__dirname, '..', '..', '..', '..', 'data', 'catalogos');
@@ -99,6 +100,25 @@ async function main() {
 
   const components = await seedComponents();
 
+  // Planes de preventivo propuestos (solo si no existen: no se pisan los ajustes hechos en la app).
+  let plansCreated = 0;
+  for (const [pi, p] of PM_PLANS.entries()) {
+    if (await prisma.maintenancePlan.findUnique({ where: { organizationId_code: { organizationId: org.id, code: p.code } } })) continue;
+    await prisma.maintenancePlan.create({
+      data: {
+        organizationId: org.id, code: p.code, name: p.name, description: p.description, basis: p.basis,
+        routines: {
+          create: p.routines.map((r, i) => ({
+            code: r.code, name: r.name, intervalDistance: r.km, intervalDays: r.days, includes: r.includes, sequence: (i + 1) * 10,
+            estimatedHours: Math.round((1 + r.tasks.length * 0.3 + r.includes.length) * 10) / 10,
+            tasks: { create: r.tasks.map(([description, componentCode, rationale], j) => ({ sequence: (j + 1) * 10, description, componentCode, rationale: rationale ?? null })) },
+          })),
+        },
+      },
+    });
+    plansCreated += pi >= 0 ? 1 : 0;
+  }
+
   const email = (process.env.SEED_ADMIN_EMAIL ?? 'admin@olast.local').toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD;
   const existing = await prisma.user.findUnique({ where: { organizationId_email: { organizationId: org.id, email } } });
@@ -109,7 +129,7 @@ async function main() {
       data: { organizationId: org.id, roleId: role.id, email, fullName: 'Administrador', passwordHash: await hash(password), mustChangePassword: true },
     });
   }
-  console.log(`Seed OK · organización OLAST · ${C.SITES.length} sedes · ${Object.keys(DEFAULT_ROLES).length} roles · ${components} códigos de componente`);
+  console.log(`Seed OK · organización OLAST · ${C.SITES.length} sedes · ${Object.keys(DEFAULT_ROLES).length} roles · ${components} códigos de componente · ${plansCreated} planes PM nuevos`);
 }
 
 main()

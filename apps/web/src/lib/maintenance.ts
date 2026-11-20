@@ -46,3 +46,21 @@ export interface WorkRequestRow {
   photos: { id: string }[];
   workOrder: { id: string; number: string; status: WoStatus } | null;
 }
+
+export const PM_STATUS_LABEL: Record<string, string> = { ok: 'Al día', upcoming: 'Próximo', due: 'Vence ya', overdue: 'Vencido' };
+export const PM_STATUS_TONE: Record<string, string> = {
+  ok: 'border-ok/30 text-ok', upcoming: 'border-sky/60 bg-sky/20 text-brand-800', due: 'border-warn/40 bg-warn/10 text-warn', overdue: 'border-danger/40 bg-danger/10 text-danger',
+};
+
+export interface PmScheduleRow {
+  id: string; status: string; pctConsumed: string; nextDueMeter: number | null; nextDueDate: string | null; projectedDueDate: string | null;
+  drivingDimension: string | null; lastDoneAt: string; lastDoneMeter: number; baselineEstimated: boolean; openWorkOrderId: string | null;
+  routine: { id: string; code: string; name: string; intervalDistance: number | null; intervalDays: number | null; plan?: { code: string; name: string } };
+  vehicle?: { id: string; plate: string; currentOdometer: number | null; lastReadingAt: string | null; criticality: string | null; site: { code: string; name: string }; vehicleModel: { model: string } };
+}
+
+export interface PmPlan {
+  id: string; code: string; name: string; description: string | null; basis: string | null; _count: { vehicles: number };
+  routines: { id: string; code: string; name: string; intervalDistance: number | null; intervalDays: number | null; includes: string[]; estimatedHours: string | null;
+    tasks: { id: string; description: string; componentCode: string | null; rationale: string | null }[] }[];
+}

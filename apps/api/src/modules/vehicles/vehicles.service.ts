@@ -18,6 +18,7 @@ import {
 } from '@cmms/domain';
 import type { Criticality } from '@cmms/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { PmService } from '../pm/pm.service';
 import { AppError } from '../../common/errors';
 import { AuthUser, siteScope } from '../../common/auth.decorators';
 import type { CreateVehicle, UpdateVehicle } from './vehicles.schemas';
@@ -39,7 +40,7 @@ type VehicleWithSummary = Prisma.VehicleGetPayload<{ include: typeof SUMMARY_INC
 
 @Injectable()
 export class VehiclesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly pm: PmService) {}
 
   /** Agrega completitud y pendientes calculados por el dominio. */
   private decorate(v: VehicleWithSummary) {
@@ -221,7 +222,7 @@ export class VehiclesService {
     const offset = b.meterType === 'odometer' ? v.odometerOffset : 0;
     const type = await this.prisma.vehicleType.findFirstOrThrow({ where: { models: { some: { id: v.vehicleModelId } } } });
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Bloquea el vehículo para serializar lecturas concurrentes.
       await tx.$queryRaw`SELECT id FROM vehicles WHERE id = ${id}::uuid FOR UPDATE`;
       const prev = await tx.meterReading.findFirst({
@@ -262,6 +263,9 @@ export class VehiclesService {
       }
       return { ...reading, status: check.status };
     });
+    // Nueva lectura vigente → recalcular vencimientos y generar OT preventivas (doc 02 P2 → P5).
+    const pm = result.status === 'accepted' ? await this.pm.recomputeVehicle(id).catch(() => ({ generated: [] as string[] })) : { generated: [] as string[] };
+    return { ...result, pmGenerated: pm.generated };
   }
 
   /** Aprobar una lectura marcada: pasa a ser la vigente si es la más reciente. */
@@ -272,7 +276,7 @@ export class VehiclesService {
     const newer = await this.prisma.meterReading.count({
       where: { vehicleId: id, meterType: r.meterType, readAt: { gt: r.readAt }, isFlagged: false },
     });
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.meterReading.update({
         where: { id: readingId },
         data: { isFlagged: false, flagReason: `${r.flagReason ?? ''} · validada por usuario`.trim() },
@@ -284,6 +288,8 @@ export class VehiclesService {
         });
       return updated;
     });
+    if (newer === 0) await this.pm.recomputeVehicle(id).catch(() => undefined);
+    return result;
   }
 
   /** E2-H2: cambio de odómetro sin perder el kilometraje acumulado. */
