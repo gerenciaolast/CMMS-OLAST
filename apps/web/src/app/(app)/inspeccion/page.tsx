@@ -225,7 +225,7 @@ function Daily() {
       <div className="flex flex-wrap items-end gap-3">
         <label className="block"><span className="mb-1 block text-sm font-medium">Día</span>
           <input type="date" value={date || r.day} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-lg border border-line bg-surface px-3" /></label>
-        <Card className="flex-1 py-3"><p className="text-sm text-muted">Cumplimiento (meta ≥ 95 %)</p><p className={`text-2xl font-bold ${r.compliance != null && r.compliance < 0.95 ? 'text-warn' : 'text-ok'}`}>{pct} <span className="text-base font-normal text-muted">· {r.done} de {r.expected} vehículos operativos</span></p></Card>
+        <Card className="flex-1 py-3"><p className="text-sm text-muted">Cumplimiento (meta ≥ 98 %)</p><p className={`text-2xl font-bold ${r.compliance != null && r.compliance < 0.98 ? 'text-warn' : 'text-ok'}`}>{pct} <span className="text-base font-normal text-muted">· {r.done} de {r.expected} vehículos operativos</span></p></Card>
       </div>
       {missing.length > 0 && <Alert tone="warn">Sin inspección: {missing.map((v) => v.plate).join(', ')}</Alert>}
       <Card className="overflow-x-auto p-0">

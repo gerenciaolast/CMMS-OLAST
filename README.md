@@ -2,7 +2,7 @@
 
 Sistema de Gestión de Mantenimiento Computarizado (CMMS) para la flota de vehículos de **OLAST**.
 
-> **Estado:** modelo aprobado por gerencia · Sprints 0 a **4 (inspección diaria y documentos) terminados** · siguiente: Sprint 5, indicadores.
+> **Estado:** modelo aprobado por gerencia · **MVP completo (Sprints 0 a 5)** · siguiente: carga de datos reales, capacitación y piloto en una sede; integración Ituran cuando el proveedor habilite el acceso.
 
 ## Objetivo
 

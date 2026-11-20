@@ -20,10 +20,10 @@ export const NAV: NavItem[] = [
   { href: '/preventivo', label: 'Preventivo', icon: CalendarClock, permission: 'work_order.view', sprint: null },
   { href: '/inspeccion', label: 'Inspección diaria', icon: ClipboardCheck, permission: ['inspection.perform', 'work_order.view'], sprint: null },
   { href: '/documentos', label: 'Documentos', icon: FileText, permission: 'vehicle.view', sprint: null },
-  { href: '/kpi', label: 'Indicadores', icon: Gauge, permission: 'kpi.view', sprint: 'S5' },
+  { href: '/kpi', label: 'Indicadores', icon: Gauge, permission: 'kpi.view', sprint: null },
   { href: '/talleres', label: 'Talleres y técnicos', icon: Factory, permission: 'work_order.view', sprint: null },
   { href: '/catalogos', label: 'Catálogos', icon: BookOpen, sprint: null },
-  { href: '/confiabilidad', label: 'Confiabilidad', icon: Activity, permission: 'kpi.view', sprint: 'S5' },
+  { href: '/confiabilidad', label: 'Confiabilidad', icon: Activity, permission: 'kpi.view', sprint: null },
 ];
 
 export const allowed = (n: NavItem, can: (p: Permission) => boolean) =>

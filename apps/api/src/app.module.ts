@@ -14,6 +14,7 @@ import { OrganizationModule } from './modules/organization/organization.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { PmModule } from './modules/pm/pm.module';
+import { KpiModule } from './modules/kpi/kpi.controller';
 import { InspectionsModule } from './modules/inspections/inspections.module';
 import { ComplianceModule } from './modules/compliance/compliance.service';
 import { NotificationsModule } from './modules/notifications/notifications.service';
@@ -42,7 +43,7 @@ export class AppModule {
         PmModule,
         NotificationsModule,
         ComplianceModule,
-        InspectionsModule,
+        InspectionsModule, KpiModule,
       ],
       controllers: [HealthController],
       providers: [

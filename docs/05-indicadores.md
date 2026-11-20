@@ -46,3 +46,23 @@ Definiciones alineadas con las métricas SMRP y EN 15341, adaptadas a flota vehi
 - Los vehículos **dados de baja** se excluyen a partir de su fecha de baja; los que ingresaron en el periodo se cuentan proporcionalmente.
 - Las fallas por accidente (causa `ACC`) y OT `SIN` **se excluyen** del MTBF y del costo de mantenimiento "técnico", y se reportan en un indicador de siniestralidad aparte.
 - Todo KPI muestra su **valor, meta, tendencia de 6 meses** y permite **profundizar** (drill-down) hasta las OT que lo componen.
+
+## 5. Implementación en el CMMS (Sprint 5)
+
+Pantallas **Indicadores** (los 14 KPI con valor, meta, semáforo con icono y texto, tendencia de 6 meses y explicación del cálculo) y **Confiabilidad** (Pareto con drill-down a las OT y vehículos con más problemas). Filtros: periodo, sede (sede actual del vehículo) y tipo de vehículo. Todo se exporta a Excel (indicadores, costo por mes, Pareto, malos actores y OT del periodo).
+
+**Historial migrado del Excel.** Trae fecha, km, costo y componente, pero no tiempos de reparación, prioridad, programación ni codificación completa. Por eso:
+
+| Incluye el historial | Solo OT registradas en el CMMS |
+|---|---|
+| #2 Cumplimiento PM, #4 MTBF, #7 Costo/km, #10 Retrabajo, Pareto, malos actores, costo por mes | #3 % planificado, #5 MTTR, #9 Programa, #12 SLA, #13 Calidad del dato |
+
+Precisiones de cálculo:
+
+- **#1 y #6** usan el historial de estados del vehículo (existe desde la carga del inventario).
+- **#2 Cumplimiento PM** compara cada PM con el anterior del mismo vehículo: a tiempo si el recorrido entre ambos no supera el intervalo base del plan + 10 %. Así se mide la ejecución real, también en el historial.
+- **Km del periodo**: interpolación lineal entre lecturas de odómetro y km registrados en las OT, sin extrapolar fuera del rango con datos (cuando Ituran esté activo, el odómetro diario hará este cálculo exacto).
+- **#10 Retrabajo** en el historial se calcula con la misma regla del cierre de OT (mismo componente en 30 días / 3 000 km); las filas del mismo día se toman como un mismo trabajo.
+- **#8 Backlog** necesita técnicos propios registrados (capacidad = 40 h/semana cada uno); si todo el trabajo es externo, se muestra el número de OT abiertas.
+- **#11 Inspección diaria** se mide en días-vehículo operativos, desde la primera inspección registrada en la app. Meta 98 %.
+- **#14 Documentos** es una foto a la fecha final del periodo.

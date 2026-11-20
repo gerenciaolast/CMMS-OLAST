@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Bell, ClipboardCheck } from 'lucide-react';
+import { Activity, AlertTriangle, Bell, ClipboardCheck, Gauge } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -9,10 +9,6 @@ import { useSession } from '@/lib/session';
 interface Component { code: string; name: string; level: number }
 interface Site { id: string; code: string; name: string }
 interface Note { id: string; kind: string; title: string; body: string; link: string | null; createdAt: string }
-
-const ROADMAP = [
-  ['S5', 'Indicadores', '14 KPI, Pareto de fallas y vehículos con más fallas'],
-] as const;
 
 export default function Home() {
   const { me, can } = useSession();
@@ -101,20 +97,12 @@ export default function Home() {
           <p className="mt-1 text-sm text-muted">{me?.permissions.length} permisos</p>
         </Card>
       </div>
-      <Card>
-        <h2 className="mb-3 font-semibold">Próximas entregas</h2>
-        <ol className="space-y-3">
-          {ROADMAP.map(([s, t, d]) => (
-            <li key={s} className="flex gap-3">
-              <span className="h-6 shrink-0 rounded bg-sky/30 px-2 text-sm font-semibold text-brand-800">{s}</span>
-              <div>
-                <p className="font-medium">{t}</p>
-                <p className="text-sm text-muted">{d}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </Card>
+      {can('kpi.view') && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link href="/kpi"><Card className="h-full hover:border-brand"><p className="flex items-center gap-2 font-semibold"><Gauge size={18} /> Indicadores</p><p className="text-sm text-muted">14 KPI con meta y tendencia, costo por mes y tipo, exportación a Excel.</p></Card></Link>
+          <Link href="/confiabilidad"><Card className="h-full hover:border-brand"><p className="flex items-center gap-2 font-semibold"><Activity size={18} /> Confiabilidad</p><p className="text-sm text-muted">Pareto de fallas y vehículos con más fallas y costo.</p></Card></Link>
+        </div>
+      )}
     </div>
   );
 }
