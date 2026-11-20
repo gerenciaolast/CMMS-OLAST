@@ -139,6 +139,44 @@ export class PmService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /**
+   * Tras importar historial: actualiza las líneas base estimadas con el preventivo más reciente y cancela las OT
+   * preventivas automáticas que el historial ya resolvió (solo si no se han iniciado ni tienen costos).
+   */
+  async refreshFromHistory(organizationId: string) {
+    const vehicles = await this.prisma.vehicle.findMany({ where: { organizationId, status: { not: 'retired' }, maintenancePlanId: { not: null } }, select: { id: true, plate: true, currentOdometer: true } });
+    const baselines: { plate: string; routine: string; from: number; to: number }[] = [];
+    const cancelled: { plate: string; number: string; reason: string }[] = [];
+    for (const v of vehicles) {
+      const base = await this.estimatedBaseline(v.id, v.currentOdometer);
+      const schedules = await this.prisma.vehiclePmSchedule.findMany({ where: { vehicleId: v.id, baselineEstimated: true }, include: { routine: true } });
+      for (const s of schedules) {
+        if (base.meter > s.lastDoneMeter) {
+          await this.prisma.vehiclePmSchedule.update({ where: { id: s.id }, data: { lastDoneAt: base.at, lastDoneMeter: base.meter } });
+          baselines.push({ plate: v.plate, routine: s.routine.code, from: s.lastDoneMeter, to: base.meter });
+        }
+      }
+      await this.recomputeVehicle(v.id);
+      const stale = await this.prisma.workOrder.findMany({
+        where: { vehicleId: v.id, origin: 'pm', status: { in: ['planned', 'scheduled'] }, labor: { none: {} }, parts: { none: {} }, externalServices: { none: {} } },
+        include: { pmRoutine: { include: { schedules: { where: { vehicleId: v.id } } } } },
+      });
+      for (const wo of stale) {
+        const sch = wo.pmRoutine?.schedules[0];
+        if (!sch || sch.status === 'due' || sch.status === 'overdue') continue;
+        const reason = `Preventivo ya ejecutado según el historial (${sch.lastDoneAt.toISOString().slice(0, 10)}, ${sch.lastDoneMeter.toLocaleString('es-CO')} km)`;
+        await this.prisma.$transaction([
+          this.prisma.workOrder.update({ where: { id: wo.id }, data: { status: 'cancelled', cancelReason: reason } }),
+          this.prisma.workOrderEvent.create({ data: { workOrderId: wo.id, action: 'cancel', fromStatus: wo.status, toStatus: 'cancelled', comment: reason } }),
+          this.prisma.vehiclePmSchedule.updateMany({ where: { openWorkOrderId: wo.id }, data: { openWorkOrderId: null } }),
+        ]);
+        cancelled.push({ plate: v.plate, number: wo.number, reason });
+      }
+      if (stale.length) await this.recomputeVehicle(v.id);
+    }
+    return { baselines, cancelled };
+  }
+
   // ───── Asignación y consultas ─────
 
   private async scopedVehicle(user: AuthUser, id: string) {

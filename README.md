@@ -71,8 +71,10 @@ pnpm --filter @cmms/api fleet:import Plantilla_flota_OLAST.xlsx
 
 ```bash
 # Crea una OT cerrada (histórica) por cada intervención del Excel, con la codificación del catálogo.
-# Idempotente: se puede repetir sin duplicar.
-pnpm --filter @cmms/api history:import HOJA_DE_VIDA_DE_MANTTO_DE_VEHICULOS.xlsx
+# Reconoce cada fila por su contenido: el archivo actualizado se puede volver a cargar sin duplicar
+# (agrega lo nuevo, aplica correcciones, actualiza el kilometraje y el preventivo). --dry-run solo muestra los cambios.
+pnpm --filter @cmms/api history:import HOJA_DE_VIDA_DE_MANTTO_DE_VEHICULOS.xlsx --dry-run
+# También desde la app: Flota → Plantilla Excel → «Historial de mantenimiento»
 ```
 
 ### Calidad
