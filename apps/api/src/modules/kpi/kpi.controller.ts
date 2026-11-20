@@ -1,12 +1,12 @@
-import { Controller, Get, Module, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Module, Put, Query, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { z } from 'zod';
-import { AuthUser, CurrentUser, RequirePermissions } from '../../common/auth.decorators';
+import { Audit, AuthUser, CurrentUser, RequirePermissions } from '../../common/auth.decorators';
 import { PrismaService } from '../../common/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { localDayRange } from '../../common/time';
-import { KpiService, type BadActorMetric, type KpiQuery, type ParetoBy } from './kpi.service';
+import { KpiService, availabilityPolicy, type BadActorMetric, type KpiQuery, type ParetoBy } from './kpi.service';
 import { kpiWorkbook } from './kpi-export';
 
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha AAAA-MM-DD');
@@ -39,6 +39,24 @@ export class KpiController {
     }
     if (from >= to) from = new Date(to.getTime() - 86_400_000);
     return { from, to, site: f.site || undefined, type: f.type || undefined };
+  }
+
+  /** Política de cálculo de la disponibilidad (por organización). */
+  @RequirePermissions('kpi.view')
+  @Get('settings')
+  async settings(@CurrentUser() u: AuthUser) {
+    const org = await this.prisma.organization.findUniqueOrThrow({ where: { id: u.organizationId } });
+    return { availability: availabilityPolicy(org.settings) };
+  }
+
+  @RequirePermissions('catalog.manage')
+  @Audit('kpi_settings')
+  @Put('settings')
+  async updateSettings(@CurrentUser() u: AuthUser, @Body(new ZodPipe(z.object({ availability: z.object({ includePreventive: z.boolean() }) }))) b: { availability: { includePreventive: boolean } }) {
+    const org = await this.prisma.organization.findUniqueOrThrow({ where: { id: u.organizationId } });
+    const settings = { ...((org.settings as Record<string, unknown>) ?? {}), availability: b.availability };
+    await this.prisma.organization.update({ where: { id: org.id }, data: { settings } });
+    return { availability: availabilityPolicy(settings) };
   }
 
   @RequirePermissions('kpi.view')

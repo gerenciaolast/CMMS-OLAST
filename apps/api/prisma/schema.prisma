@@ -20,6 +20,8 @@ model Organization {
   distanceUnit String   @default("km") @map("distance_unit")
   volumeUnit   String   @default("gal") @map("volume_unit")
   timezone     String   @default("America/Bogota")
+  /// Políticas configurables (p. ej. { "availability": { "includePreventive": false } }).
+  settings     Json     @default("{}")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
 

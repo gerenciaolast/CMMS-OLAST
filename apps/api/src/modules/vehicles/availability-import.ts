@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import type { PrismaClient } from '@prisma/client';
-import { buildDowntimeBlocks, canonicalPlate, normalizePlate, type DowntimeKind } from '@cmms/domain';
+import { buildDowntimeBlocks, canonicalPlate, isNonWorkingDay, normalizePlate, type DowntimeKind } from '@cmms/domain';
 import { CORRECTIVE_WORK_ORDER_TYPES, type WorkOrderType } from '@cmms/shared';
 import { localDayRange } from '../../common/time';
 
@@ -19,7 +19,7 @@ const MATCH_DAYS = 3;
 export interface AvailabilityReport {
   dryRun: boolean;
   /** availability: fórmula del cuadro (solo resta paradas correctivas); availabilityAll: resta también las preventivas. */
-  months: { sheet: string; month: string; workdays: number | null; vehicles: number; correctiveDays: number; preventiveDays: number; availability: number | null; availabilityAll: number | null }[];
+  months: { sheet: string; month: string; workdays: number | null; realWorkdays: number; vehicles: number; correctiveDays: number; preventiveDays: number; availability: number | null; availabilityAll: number | null }[];
   vehicles: number;
   stops: { corrective: number; preventive: number; days: number };
   averageDays: { corrective: number | null; preventive: number | null };
@@ -100,7 +100,7 @@ export function parseAvailabilityWorkbook(wb: ExcelJS.Workbook) {
     const tot = [...perVehicle.values()].reduce((a, b) => ({ c: a.c + b.c, p: a.p + b.p }), { c: 0, p: 0 });
     const avg = (f: (t: { c: number; p: number }) => number) =>
       workdays && plates.length ? plates.reduce((a, v) => a + Math.max(0, (workdays! - f(perVehicle.get(v.plate) ?? { c: 0, p: 0 })) / workdays!), 0) / plates.length : null;
-    months.push({ sheet: ws.name.trim(), month: days[0]!.day.slice(0, 7), workdays, vehicles: plates.length, correctiveDays: tot.c, preventiveDays: tot.p, availability: avg((t) => t.c), availabilityAll: avg((t) => t.c + t.p) });
+    months.push({ sheet: ws.name.trim(), month: days[0]!.day.slice(0, 7), workdays, realWorkdays: days.filter((x) => !isNonWorkingDay(x.day)).length, vehicles: plates.length, correctiveDays: tot.c, preventiveDays: tot.p, availability: avg((t) => t.c), availabilityAll: avg((t) => t.c + t.p) });
   }
   return { vehicles, months, skipped };
 }
@@ -176,6 +176,9 @@ export async function importAvailability(prisma: PrismaClient, file: string | Bu
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
   report.averageDays = { corrective: avg(durations.corrective), preventive: avg(durations.preventive) };
   report.byVehicle.sort((a, b) => b.days - a.days);
+  for (const m of report.months)
+    if (m.workdays != null && m.workdays !== m.realWorkdays)
+      report.warnings.push(`${m.month}: el cuadro usa ${m.workdays} días programados y el mes tiene ${m.realWorkdays} días hábiles (lunes a sábado sin festivos). El CMMS calcula con ${m.realWorkdays}.`);
   if (report.skippedSheets.length) report.warnings.push(`Hojas omitidas (no tienen el formato de vehículos): ${report.skippedSheets.join(', ')}`);
   if (report.unknownPlates.length) report.warnings.push(`Placas que no están en la flota: ${report.unknownPlates.join(', ')}`);
   return report;

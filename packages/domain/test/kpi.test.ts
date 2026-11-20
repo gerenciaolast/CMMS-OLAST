@@ -81,3 +81,25 @@ describe('indicadores · Sprint 5', () => {
     expect(kpi.kpiLight(null, 0.9, 'higher')).toBeNull();
   });
 });
+
+describe('disponibilidad sobre días hábiles (política OLAST 2026)', () => {
+  // Semana del lunes 2 al domingo 8 de febrero de 2026: 6 días hábiles.
+  const day = (s: string) => ({ start: new Date(`${s}T05:00:00Z`), end: new Date(new Date(`${s}T05:00:00Z`).getTime() + 86_400_000) });
+  const windows = ['2026-02-02', '2026-02-03', '2026-02-04', '2026-02-05', '2026-02-06', '2026-02-07'].map(day);
+  const at = (s: string) => new Date(`${s}T05:00:00Z`);
+  const base = [
+    { vehicleId: 'V1', status: 'operational' as const, startedAt: at('2026-02-02'), endedAt: at('2026-02-04'), reason: null },
+    { vehicleId: 'V1', status: 'out_of_service_maintenance' as const, startedAt: at('2026-02-04'), endedAt: at('2026-02-05'), reason: 'correctiva' },
+    { vehicleId: 'V1', status: 'out_of_service_maintenance' as const, startedAt: at('2026-02-05'), endedAt: at('2026-02-06'), reason: 'preventiva' },
+    { vehicleId: 'V1', status: 'out_of_service_maintenance' as const, startedAt: at('2026-02-06'), endedAt: at('2026-02-10'), reason: 'correctiva' }, // vie → lun: el domingo no cuenta
+  ];
+  it('cuenta solo días hábiles: 6 requeridos, 1 + 1 + 2 días parados', () => {
+    expect(kpi.availabilityInWindows(base, windows)).toBeCloseTo(2 / 6);
+  });
+  it('sin preventivos (como el cuadro de OLAST)', () => {
+    expect(kpi.availabilityInWindows(base, windows, (i) => i.reason === 'preventiva')).toBeCloseTo(3 / 6);
+  });
+  it('días hábiles que dura una parada', () => {
+    expect(kpi.windowsCovered(at('2026-02-06'), at('2026-02-10'), windows)).toBe(2); // vie y sáb dentro de la semana
+  });
+});

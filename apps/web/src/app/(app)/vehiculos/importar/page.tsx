@@ -85,7 +85,7 @@ function HistoryImport() {
 interface AvailabilityReport {
   dryRun: boolean; vehicles: number; linkedOrders: number; intervalsCreated: number; intervalsReplaced: number;
   stops: { corrective: number; preventive: number; days: number }; averageDays: { corrective: number | null; preventive: number | null };
-  months: { sheet: string; month: string; vehicles: number; correctiveDays: number; preventiveDays: number; availability: number | null; availabilityAll: number | null }[];
+  months: { sheet: string; month: string; workdays: number | null; realWorkdays: number; vehicles: number; correctiveDays: number; preventiveDays: number; availability: number | null; availabilityAll: number | null }[];
   byVehicle: { plate: string; stops: number; days: number; longest: { start: string; days: number; kind: string } | null }[];
   warnings: string[];
 }
@@ -131,9 +131,9 @@ function AvailabilityImport() {
           </Alert>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="text-left text-xs text-muted uppercase"><tr><th className="py-1 pr-3">Mes</th><th className="py-1 pr-3 text-right">Días correctivo</th><th className="py-1 pr-3 text-right">Días preventivo</th><th className="py-1 pr-3 text-right">Disponibilidad (como el cuadro)</th><th className="py-1 text-right">Con preventivos</th></tr></thead>
+              <thead className="text-left text-xs text-muted uppercase"><tr><th className="py-1 pr-3">Mes</th><th className="py-1 pr-3 text-right">Días hábiles</th><th className="py-1 pr-3 text-right">Días correctivo</th><th className="py-1 pr-3 text-right">Días preventivo</th><th className="py-1 pr-3 text-right">Disponibilidad (como el cuadro)</th><th className="py-1 text-right">Con preventivos</th></tr></thead>
               <tbody className="divide-y divide-line">
-                {report.months.map((m) => <tr key={m.sheet}><td className="py-1 pr-3">{m.month}</td><td className="py-1 pr-3 text-right tabular-nums">{m.correctiveDays}</td><td className="py-1 pr-3 text-right tabular-nums">{m.preventiveDays}</td><td className="py-1 pr-3 text-right tabular-nums">{pct(m.availability)}</td><td className="py-1 text-right tabular-nums">{pct(m.availabilityAll)}</td></tr>)}
+                {report.months.map((m) => <tr key={m.sheet}><td className="py-1 pr-3">{m.month}</td><td className="py-1 pr-3 text-right tabular-nums">{m.realWorkdays}{m.workdays != null && m.workdays !== m.realWorkdays && <span className="text-warn" title="Días programados que usa el cuadro"> (cuadro: {m.workdays})</span>}</td><td className="py-1 pr-3 text-right tabular-nums">{m.correctiveDays}</td><td className="py-1 pr-3 text-right tabular-nums">{m.preventiveDays}</td><td className="py-1 pr-3 text-right tabular-nums">{pct(m.availability)}</td><td className="py-1 text-right tabular-nums">{pct(m.availabilityAll)}</td></tr>)}
               </tbody>
             </table>
           </div>

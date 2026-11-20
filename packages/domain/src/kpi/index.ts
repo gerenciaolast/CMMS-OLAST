@@ -35,6 +35,43 @@ export function fleetAvailability(intervals: StatusInterval[], from: Date, to: D
   return ratio(calendar - unavailable, calendar);
 }
 
+export interface TimeWindow { start: Date; end: Date }
+
+/**
+ * #1 Disponibilidad sobre el tiempo requerido: solo cuenta lo que cae dentro de las ventanas dadas
+ * (p. ej. los días hábiles de lunes a sábado, sin festivos). Con `ignore` se tratan como disponibles
+ * ciertas paradas (p. ej. las preventivas, según la política de la organización).
+ */
+export function availabilityInWindows<T extends StatusInterval>(intervals: T[], windows: TimeWindow[], ignore: (i: T) => boolean = () => false): number | null {
+  let required = 0;
+  let unavailable = 0;
+  for (const i of intervals) {
+    if (i.status === 'retired') continue;
+    const is = i.startedAt.getTime();
+    const ie = (i.endedAt ?? windows[windows.length - 1]?.end ?? i.startedAt).getTime();
+    for (const w of windows) {
+      const s = Math.max(is, w.start.getTime());
+      const e = Math.min(ie, w.end.getTime());
+      if (e <= s) continue;
+      const h = (e - s) / HOUR_MS;
+      required += h;
+      if (UNAVAILABLE_FOR_AVAILABILITY.includes(i.status) && !ignore(i)) unavailable += h;
+    }
+  }
+  return ratio(required - unavailable, required);
+}
+
+/** Cantidad de ventanas (días hábiles) que toca un intervalo, contando fracciones. */
+export function windowsCovered(start: Date, end: Date, windows: TimeWindow[]): number {
+  let n = 0;
+  for (const w of windows) {
+    const s = Math.max(start.getTime(), w.start.getTime());
+    const e = Math.min(end.getTime(), w.end.getTime());
+    if (e > s) n += (e - s) / (w.end.getTime() - w.start.getTime());
+  }
+  return n;
+}
+
 /** #2 Cumplimiento PM: PM a tiempo / PM que vencieron en el periodo. */
 export function pmCompliance(executions: { result: 'early' | 'on_time' | 'late' | 'not_done' }[]): number | null {
   const ok = executions.filter((e) => e.result === 'on_time' || e.result === 'early').length;

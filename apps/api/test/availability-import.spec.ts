@@ -65,7 +65,7 @@ describe('cuadro de disponibilidad', () => {
     expect(r.body.skippedSheets).toEqual(['FEB-2022']);
     expect(r.body.unknownPlates).toEqual(['ZZZ000']);
     const feb = r.body.months[0];
-    expect(feb).toMatchObject({ month: '2026-02', workdays: 24, correctiveDays: 12, preventiveDays: 1 });
+    expect(feb).toMatchObject({ month: '2026-02', workdays: 24, realWorkdays: 24, correctiveDays: 12, preventiveDays: 1 });
     expect(feb.availability).toBeCloseTo(((24 - 12) / 24 + 1) / 2); // promedio de los 2 vehículos del cuadro, solo correctivo
     expect(await prisma.vehicleStatusLog.count({ where: { vehicleId } })).toBe(0);
   });
@@ -82,13 +82,34 @@ describe('cuadro de disponibilidad', () => {
     expect(await prisma.vehicleStatusLog.count({ where: { vehicleId } })).toBe(5);
   });
 
-  it('alimenta disponibilidad (con y sin preventivos) y días por parada', async () => {
+  it('alimenta la disponibilidad como el cuadro: días hábiles y sin preventivos (política 2026)', async () => {
     const r = await request(app.getHttpServer()).get(`/api/v1/kpi/dashboard?from=2026-02-01&to=2026-02-28&type=${TYPE}`).auth(token, { type: 'bearer' }).expect(200);
     const k = Object.fromEntries(r.body.kpis.map((x: { code: string }) => [x.code, x]));
-    expect(k.availability.value).toBeCloseTo(14 / 28); // 13 días correctivo + 1 preventivo de 28
-    expect(k.availability.detail).toBe('Sin preventivos (como el cuadro): 53,6 %');
-    expect(k.downtime.value).toBeCloseTo(7);
-    expect(k.downtime.detail).toBe('2 paradas · correctiva 13,0 d (1) · preventiva 1,0 d (1)');
+    // Febrero 2026: 24 días hábiles (lunes a sábado). Correctivo: 12 días hábiles (el domingo 8 no cuenta). Preventivo: 1.
+    expect(k.availability.value).toBeCloseTo(12 / 24);
+    expect(k.availability.name).toBe('Disponibilidad de flota (sin preventivos)');
+    expect(k.availability.detail).toBe('Con preventivos: 45,8 % · 24 días hábiles');
+    expect(k.downtime.value).toBeCloseTo(12);
+    expect(k.downtime.detail).toBe('2 paradas · correctiva 12,0 d (1) · preventiva 1,0 d (1)');
+    const actors = await request(app.getHttpServer()).get(`/api/v1/kpi/bad-actors?from=2026-02-01&to=2026-02-28&type=${TYPE}`).auth(token, { type: 'bearer' }).expect(200);
+    expect(actors.body[0].availability).toBeCloseTo(12 / 24);
+  });
+
+  it('la política se puede cambiar (para el próximo año): con preventivos', async () => {
+    const put = (includePreventive: boolean) =>
+      request(app.getHttpServer()).put('/api/v1/kpi/settings').auth(token, { type: 'bearer' }).send({ availability: { includePreventive } }).expect(200);
+    try {
+      await put(true);
+      const r = await request(app.getHttpServer()).get(`/api/v1/kpi/dashboard?from=2026-02-01&to=2026-02-28&type=${TYPE}`).auth(token, { type: 'bearer' }).expect(200);
+      const k = Object.fromEntries(r.body.kpis.map((x: { code: string }) => [x.code, x]));
+      expect(k.availability.value).toBeCloseTo(11 / 24);
+      expect(k.availability.detail).toBe('Sin preventivos: 50,0 % · 24 días hábiles');
+      expect(k.downtime.value).toBeCloseTo(6.5);
+    } finally {
+      await put(false);
+    }
+    const g = await request(app.getHttpServer()).get('/api/v1/kpi/settings').auth(token, { type: 'bearer' }).expect(200);
+    expect(g.body).toEqual({ availability: { includePreventive: false } });
   });
 
   it('solo jefes y supervisores pueden cargarlo', async () => {

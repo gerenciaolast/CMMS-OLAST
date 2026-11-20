@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { findReworkOrigin, kpi, requiresTechnicalInspection, type ClosedRepair } from '@cmms/domain';
+import { findReworkOrigin, isNonWorkingDay, kpi, requiresTechnicalInspection, type ClosedRepair } from '@cmms/domain';
 import { CORRECTIVE_WORK_ORDER_TYPES, PLANNED_WORK_ORDER_TYPES, UNAVAILABLE_FOR_AVAILABILITY, type VehicleStatus, type WorkOrderType } from '@cmms/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthUser, siteScope } from '../../common/auth.decorators';
@@ -22,17 +22,17 @@ export type KpiCode =
 interface Def { n: number; name: string; unit: 'pct' | 'km' | 'h' | 'd' | 'cop_km' | 'weeks'; target: number | [number, number] | null; direction: kpi.KpiDirection; targetLabel: string; scope: string; trend: boolean; band?: number }
 
 export const KPI_DEFS: Record<KpiCode, Def> = {
-  availability: { n: 1, name: 'Disponibilidad de flota', unit: 'pct', target: 0.95, direction: 'higher', targetLabel: '≥ 95 %', trend: true, band: 0.03, scope: 'Horas disponibles / horas calendario. Resta toda parada por mantenimiento (preventiva y correctiva) y espera de repuestos; siniestros aparte. Usa los estados del CMMS y el cuadro de disponibilidad cargado. El detalle muestra también la cifra sin preventivos, como la calcula el cuadro.' },
+  availability: { n: 1, name: 'Disponibilidad de flota', unit: 'pct', target: 0.95, direction: 'higher', targetLabel: '≥ 95 %', trend: true, band: 0.03, scope: '' },
   pm_compliance: { n: 2, name: 'Cumplimiento de PM', unit: 'pct', target: 0.9, direction: 'higher', targetLabel: '≥ 90 %', trend: true, scope: 'PM hechos sin pasar el intervalo del plan + 10 %, comparando cada PM con el anterior del vehículo. Incluye historial.' },
   planned: { n: 3, name: '% mantenimiento planificado (costo)', unit: 'pct', target: 0.8, direction: 'higher', targetLabel: '≥ 80 %', trend: true, scope: 'OT registradas en el CMMS (el Excel no distingue emergencia de programado).' },
   mtbf: { n: 4, name: 'MTBF (km entre fallas)', unit: 'km', target: null, direction: 'higher', targetLabel: 'Creciente', trend: true, scope: 'Km de la flota / OT correctivas (sin accidentes). Incluye historial.' },
   mttr: { n: 5, name: 'MTTR (horas por reparación)', unit: 'h', target: 24, direction: 'lower', targetLabel: '≤ 24 h', trend: true, band: 0.5, scope: 'OT correctivas registradas en el CMMS con inicio y fin de ejecución.' },
-  downtime: { n: 6, name: 'Días fuera de servicio por parada', unit: 'd', target: null, direction: 'lower', targetLabel: 'Decreciente', trend: true, scope: 'Duración promedio de las paradas por mantenimiento o repuesto que empezaron en el periodo (incluye la espera de taller y repuestos, no solo la reparación). Fuente: estados del CMMS y cuadro de disponibilidad.' },
+  downtime: { n: 6, name: 'Días hábiles fuera de servicio por parada', unit: 'd', target: null, direction: 'lower', targetLabel: 'Decreciente', trend: true, scope: '' },
   cost_per_km: { n: 7, name: 'Costo de mantenimiento por km', unit: 'cop_km', target: null, direction: 'lower', targetLabel: 'Línea base', trend: true, scope: 'Mano de obra + repuestos + servicios externos / km. Sin siniestros. Incluye historial.' },
   backlog: { n: 8, name: 'Backlog', unit: 'weeks', target: [2, 4], direction: 'range', targetLabel: '2 – 4 semanas', trend: false, scope: 'Horas estimadas de OT abiertas / capacidad semanal de técnicos propios (40 h c/u). Foto de hoy.' },
   schedule: { n: 9, name: 'Cumplimiento del programa', unit: 'pct', target: 0.85, direction: 'higher', targetLabel: '≥ 85 %', trend: true, scope: 'OT con fecha programada, terminadas a tiempo.' },
   rework: { n: 10, name: 'Retrabajo', unit: 'pct', target: 0.03, direction: 'lower', targetLabel: '≤ 3 %', trend: true, band: 1, scope: 'OT correctivas que repiten el componente en 30 días / 3 000 km. Incluye historial.' },
-  inspection: { n: 11, name: 'Cumplimiento de inspección diaria', unit: 'pct', target: 0.98, direction: 'higher', targetLabel: '≥ 98 %', trend: true, band: 0.05, scope: 'Días-vehículo operativos con inspección, desde que se usa la inspección en la app.' },
+  inspection: { n: 11, name: 'Cumplimiento de inspección diaria', unit: 'pct', target: 0.98, direction: 'higher', targetLabel: '≥ 98 %', trend: true, band: 0.05, scope: 'Días hábiles (lunes a sábado, sin festivos) en que cada vehículo operativo tuvo inspección, desde que se usa la inspección en la app.' },
   sla: { n: 12, name: 'Cumplimiento de tiempos por prioridad', unit: 'pct', target: 0.9, direction: 'higher', targetLabel: 'P1 ≥ 95 % · P2 ≥ 90 %', trend: true, scope: 'Desde el aviso hasta el fin de la reparación, frente al tiempo objetivo de su prioridad.' },
   data_quality: { n: 13, name: 'Calidad del dato (codificación)', unit: 'pct', target: 0.95, direction: 'higher', targetLabel: '≥ 95 %', trend: true, band: 0.05, scope: 'OT correctivas cerradas con componente, modo, causa y acción. Sin historial (se codificó automáticamente desde el texto).' },
   documents: { n: 14, name: 'Documentos vigentes', unit: 'pct', target: 1, direction: 'higher', targetLabel: '100 %', trend: false, band: 0.05, scope: 'Vehículos activos con SOAT y técnico-mecánica (si aplica) vigentes. Foto a la fecha final.' },
@@ -99,7 +99,7 @@ export class KpiService {
     markHistoricalRework(ordersExt);
     const woType = new Map(orders.map((o) => [o.id, o.type]));
     for (const v of vehicles) for (const l of v.statusLog) (l as typeof l & { woType?: string }).woType = l.workOrderId ? woType.get(l.workOrderId) : undefined;
-    return { tz: org.timezone, vehicles, orders: ordersExt, inspections, priorities, technicians, blockingTypes: blockingTypes.map((t) => t.code) };
+    return { tz: org.timezone, policy: availabilityPolicy(org.settings), windows: new Map<string, kpi.TimeWindow[]>(), vehicles, orders: ordersExt, inspections, priorities, technicians, blockingTypes: blockingTypes.map((t) => t.code) };
   }
 
   /** Puntos (fecha, km) del vehículo: lecturas y OT con kilometraje. */
@@ -127,9 +127,13 @@ export class KpiService {
 
     // 1. Disponibilidad
     const intervals = d.vehicles.flatMap((v) => v.statusLog.map((l) => ({ vehicleId: v.id, ...l })));
-    const noPm = intervals.map((i) => (isPreventiveStop(i) ? { ...i, status: 'operational' as VehicleStatus } : i));
-    const withoutPm = end > from ? kpi.fleetAvailability(noPm, from, end) : null;
-    out.availability = { value: end > from ? kpi.fleetAvailability(intervals, from, end) : null, detail: withoutPm == null ? '' : `Sin preventivos (como el cuadro): ${(withoutPm * 100).toFixed(1).replace('.', ',')} %` };
+    const days = this.workdays(d, from, end);
+    const withPm = kpi.availabilityInWindows(intervals, days);
+    const withoutPm = kpi.availabilityInWindows(intervals, days, isPreventiveStop);
+    const p1 = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1).replace('.', ',')} %`);
+    out.availability = d.policy.includePreventive
+      ? { value: withPm, detail: `Sin preventivos: ${p1(withoutPm)} · ${days.length} días hábiles` }
+      : { value: withoutPm, detail: `Con preventivos: ${p1(withPm)} · ${days.length} días hábiles` };
 
     // 2. Cumplimiento PM por intervalo real
     let pmOk = 0, pmAll = 0;
@@ -162,11 +166,12 @@ export class KpiService {
 
     // 6. Días fuera de servicio por parada (paradas que empezaron en el periodo, duración completa)
     const stops = intervals.filter((i) => UNAVAILABLE_FOR_AVAILABILITY.includes(i.status) && i.startedAt >= from && i.startedAt < to);
-    const dur = (i: (typeof stops)[number]) => ((i.endedAt ?? now).getTime() - i.startedAt.getTime()) / (24 * HOUR);
+    // Duración en días hábiles (sin domingos ni festivos), igual que el cuadro de disponibilidad.
+    const dur = (i: (typeof stops)[number]) => kpi.windowsCovered(i.startedAt, i.endedAt ?? now, this.workdays(d, i.startedAt, i.endedAt ?? now));
     const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
     const corrStops = stops.filter((i) => !isPreventiveStop(i)).map(dur), pmStops = stops.filter(isPreventiveStop).map(dur);
     const d1 = (v: number | null) => (v == null ? '—' : `${v.toFixed(1).replace('.', ',')} d`);
-    out.downtime = { value: mean(stops.map(dur)), detail: stops.length ? `${stops.length} paradas · correctiva ${d1(mean(corrStops))} (${corrStops.length}) · preventiva ${d1(mean(pmStops))} (${pmStops.length})` : '0 paradas' };
+    out.downtime = { value: d.policy.includePreventive ? mean(stops.map(dur)) : mean(corrStops), detail: stops.length ? `${stops.length} paradas · correctiva ${d1(mean(corrStops))} (${corrStops.length}) · preventiva ${d1(mean(pmStops))} (${pmStops.length})` : '0 paradas' };
 
     // 8. Backlog (foto de hoy)
     const open = d.orders.filter((o) => OPEN.includes(o.status));
@@ -220,19 +225,36 @@ export class KpiService {
     const first = d.inspections.reduce<Date | null>((m, i) => (!m || i.performedAt < m ? i.performedAt : m), null);
     if (!first || end <= from) return { value: null, detail: 'Aún no hay inspecciones registradas' };
     const done = new Set(d.inspections.map((i) => `${i.vehicleId}|${localDayRange(d.tz, i.performedAt).day}`));
-    let day = localDayRange(d.tz, new Date(Math.max(from.getTime(), first.getTime())));
     let expected = 0, ok = 0;
-    for (let guard = 0; day.start < end && guard < 800; guard++) {
-      const noon = new Date(day.start.getTime() + 12 * HOUR);
+    for (const w of this.workdays(d, new Date(Math.max(from.getTime(), localDayRange(d.tz, first).start.getTime())), end)) {
+      const day = { day: localDayRange(d.tz, new Date(w.start.getTime() + 12 * HOUR)).day };
+      const noon = new Date(w.start.getTime() + 12 * HOUR);
       for (const v of d.vehicles) {
         const st = v.statusLog.find((l) => l.startedAt <= noon && (!l.endedAt || l.endedAt > noon))?.status;
         if (!st || !AVAILABLE.includes(st)) continue;
         expected++;
         if (done.has(`${v.id}|${day.day}`)) ok++;
       }
-      day = localDayRange(d.tz, new Date(day.end.getTime() + HOUR));
     }
     return { value: kpi.percentage(ok, expected), detail: `${ok} de ${expected} días-vehículo` };
+  }
+
+  /** Días hábiles de la operación (lunes a sábado, sin festivos de Colombia) en [from, to), como ventanas locales. */
+  private workdays(d: Data, from: Date, to: Date): kpi.TimeWindow[] {
+    const key = `${from.getTime()}|${to.getTime()}`;
+    const hit = d.windows.get(key);
+    if (hit) return hit;
+    const out: kpi.TimeWindow[] = [];
+    let day = localDayRange(d.tz, from);
+    for (let guard = 0; day.start < to && guard < 1200; guard++) {
+      if (!isNonWorkingDay(day.day)) {
+        const s = Math.max(day.start.getTime(), from.getTime()), e = Math.min(day.end.getTime(), to.getTime());
+        if (e > s) out.push({ start: new Date(s), end: new Date(e) });
+      }
+      day = localDayRange(d.tz, new Date(day.end.getTime() + HOUR));
+    }
+    d.windows.set(key, out);
+    return out;
   }
 
   /** Meses calendario locales [inicio, fin) que terminan en el mes de `to`. */
@@ -255,7 +277,7 @@ export class KpiService {
     const main = this.compute(d, q.from, q.to, now);
     const trend = this.months(d.tz, q.to, 6).map((m) => ({ month: m.label, values: this.compute(d, m.from, m.to, now) }));
     const kpis = (Object.keys(KPI_DEFS) as KpiCode[]).map((code) => {
-      const def = KPI_DEFS[code];
+      const def = { ...KPI_DEFS[code], ...policyText(code, d.policy) };
       const value = main[code].value;
       return {
         code, ...def, value, detail: main[code].detail,
@@ -328,7 +350,7 @@ export class KpiService {
         orders: orders.length, failures, cost, km,
         costPerKm: km >= 1000 ? cost / km : null,
         kmBetweenFailures: failures ? km / failures : null,
-        availability: end > q.from ? kpi.fleetAvailability(v.statusLog.map((l) => ({ vehicleId: v.id, ...l })), q.from, end) : null,
+        availability: kpi.availabilityInWindows(v.statusLog.map((l) => ({ vehicleId: v.id, ...l })), this.workdays(d, q.from, end), d.policy.includePreventive ? () => false : isPreventiveStop),
       };
     });
     const key: Record<BadActorMetric, (r: (typeof rows)[number]) => number> = {
@@ -386,4 +408,29 @@ function markHistoricalRework(orders: { id: string; vehicleId: string; type: str
 /** Parada preventiva: ligada a una OT preventiva o marcada así en el cuadro de disponibilidad. */
 function isPreventiveStop(i: { status: string; reason: string | null; woType?: string }) {
   return UNAVAILABLE_FOR_AVAILABILITY.includes(i.status as VehicleStatus) && (PREVENTIVE.includes(i.woType ?? '') || /parada preventiva/i.test(i.reason ?? ''));
+}
+
+export interface AvailabilityPolicy { includePreventive: boolean }
+
+/** Política de OLAST 2026: días hábiles (lunes a sábado, sin festivos) y sin descontar preventivos, como el cuadro. */
+export function availabilityPolicy(settings: unknown): AvailabilityPolicy {
+  const a = (settings as { availability?: { includePreventive?: unknown } } | null)?.availability;
+  return { includePreventive: a?.includePreventive === true };
+}
+
+const BASIS = 'Base: días hábiles de lunes a sábado, sin domingos ni festivos de Colombia.';
+function policyText(code: KpiCode, p: AvailabilityPolicy): Partial<Def> {
+  if (code === 'availability')
+    return {
+      name: p.includePreventive ? 'Disponibilidad de flota' : 'Disponibilidad de flota (sin preventivos)',
+      scope: p.includePreventive
+        ? `Tiempo disponible / tiempo requerido. Resta toda parada por mantenimiento (correctiva y preventiva) y espera de repuestos; siniestros aparte. ${BASIS} El detalle muestra la cifra sin preventivos.`
+        : `Tiempo disponible / tiempo requerido, restando solo las paradas correctivas y la espera de repuestos (política OLAST 2026, igual que el cuadro de disponibilidad). ${BASIS} El detalle muestra la cifra con preventivos como referencia.`,
+    };
+  if (code === 'downtime')
+    return {
+      name: p.includePreventive ? 'Días hábiles fuera de servicio por parada' : 'Días hábiles fuera de servicio por parada correctiva',
+      scope: `Duración promedio, en días hábiles, de las paradas que empezaron en el periodo${p.includePreventive ? '' : ' (el valor es de las correctivas; el detalle muestra también las preventivas)'}. Incluye la espera de taller y repuestos, no solo la reparación. ${BASIS}`,
+    };
+  return {};
 }
