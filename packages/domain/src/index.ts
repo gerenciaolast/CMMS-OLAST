@@ -8,4 +8,5 @@ export * from './vehicle';
 export * from './tires';
 export * from './work-order-flow';
 export * from './inspection';
+export * from './downtime';
 export * as kpi from './kpi';

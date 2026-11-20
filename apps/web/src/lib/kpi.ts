@@ -1,4 +1,4 @@
-export type KpiUnit = 'pct' | 'km' | 'h' | 'cop_km' | 'weeks';
+export type KpiUnit = 'pct' | 'km' | 'h' | 'd' | 'cop_km' | 'weeks';
 export type Light = 'ok' | 'warn' | 'bad' | null;
 export interface Kpi {
   code: string; n: number; name: string; unit: KpiUnit; value: number | null; detail: string; light: Light;
@@ -20,6 +20,7 @@ export function fmt(v: number | null | undefined, unit: KpiUnit): string {
     case 'pct': return `${nf(v >= 0.995 || v === 0 ? 0 : 1).format(v * 100)} %`;
     case 'km': return `${nf().format(v)} km`;
     case 'h': return `${nf(1).format(v)} h`;
+    case 'd': return `${nf(1).format(v)} d`;
     case 'cop_km': return `$${nf().format(v)}/km`;
     case 'weeks': return `${nf(1).format(v)} sem`;
   }

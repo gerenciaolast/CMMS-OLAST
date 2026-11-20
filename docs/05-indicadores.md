@@ -59,10 +59,19 @@ Pantallas **Indicadores** (los 14 KPI con valor, meta, semáforo con icono y tex
 
 Precisiones de cálculo:
 
-- **#1 y #6** usan el historial de estados del vehículo (existe desde la carga del inventario).
+- **#1 y #6** usan el historial de estados del vehículo: el registrado en el CMMS y el reconstruido desde el **cuadro de disponibilidad** (feb–oct 2026). #1 resta toda parada por mantenimiento (preventiva y correctiva); el detalle muestra también la cifra **sin preventivos**, que es como la calcula el cuadro de OLAST. #6 se expresa en **días por parada** (correctiva y preventiva por separado) e incluye la espera de taller y repuestos: es el tiempo que la operación pierde el vehículo, no solo el de la reparación (MTTR #5 se medirá con inicio y fin de ejecución de las OT).
 - **#2 Cumplimiento PM** compara cada PM con el anterior del mismo vehículo: a tiempo si el recorrido entre ambos no supera el intervalo base del plan + 10 %. Así se mide la ejecución real, también en el historial.
 - **Km del periodo**: interpolación lineal entre lecturas de odómetro y km registrados en las OT, sin extrapolar fuera del rango con datos (cuando Ituran esté activo, el odómetro diario hará este cálculo exacto).
 - **#10 Retrabajo** en el historial se calcula con la misma regla del cierre de OT (mismo componente en 30 días / 3 000 km); las filas del mismo día se toman como un mismo trabajo.
 - **#8 Backlog** necesita técnicos propios registrados (capacidad = 40 h/semana cada uno); si todo el trabajo es externo, se muestra el número de OT abiertas.
 - **#11 Inspección diaria** se mide en días-vehículo operativos, desde la primera inspección registrada en la app. Meta 98 %.
 - **#14 Documentos** es una foto a la fecha final del periodo.
+
+### Cuadro de disponibilidad (Excel mensual de OLAST)
+
+Formato: una hoja por mes con `SUCURSAL · PLACA · MANTENIMIENTO (PREVENTIVO/CORRECTIVO)` y un día por columna; `FDS` = fuera de servicio. Al importarlo:
+
+- Los domingos y festivos de Colombia quedan en blanco en el cuadro aunque el vehículo siga en el taller: el sistema une esos tramos en **una sola parada** (también entre meses).
+- Cada parada se liga a la OT del historial del mismo vehículo y tipo (±3 días).
+- Se reconstruye el historial de estados (operativo / fuera de servicio por mantenimiento) solo en los meses del cuadro y antes del primer estado registrado en el CMMS. Repetible: reemplaza lo cargado antes desde el cuadro.
+- Hallazgos sobre el archivo (oct-2026): su disponibilidad **solo resta los días correctivos** (la fila preventiva se suma con `SUM`, que ignora el texto «FDS»); el resumen mensual promedia **solo las primeras 5 placas** (`AVERAGE(AJ7:AJ16)`), no las 20; WNZ126 en abril usa 26 días programados en vez de 23.

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowLeft, Download, History, Upload } from 'lucide-react';
+import { ArrowLeft, CalendarX, Download, History, Upload } from 'lucide-react';
 import { useSession } from '@/lib/session';
 import { money } from '@/lib/fleet';
 import { Alert, Button, Card, SecondaryButton } from '@/components/ui';
@@ -75,6 +75,70 @@ function HistoryImport() {
           {report.meterUpdates.length > 0 && <p><span className="font-medium">Kilometraje actualizado: </span>{report.meterUpdates.map((m) => `${m.plate} ${m.km.toLocaleString('es-CO')}`).join(' · ')}</p>}
           {report.notInFile.length > 0 && <div><p className="font-medium text-warn">Están en el sistema pero ya no en el archivo (no se borran)</p><ul className="list-disc pl-5">{report.notInFile.map((u) => <li key={u.number}>{u.plate} {u.number} {u.date} · {u.description.slice(0, 80)}</li>)}</ul></div>}
           {report.pm && report.pm.cancelled.length > 0 && <div><p className="font-medium">OT preventivas canceladas porque el historial ya las resolvió</p><ul className="list-disc pl-5">{report.pm.cancelled.map((c) => <li key={c.number}>{c.plate} {c.number}: {c.reason}</li>)}</ul></div>}
+          {report.warnings.length > 0 && <details><summary className="cursor-pointer text-muted">Advertencias ({report.warnings.length})</summary><ul className="list-disc pl-5">{report.warnings.map((w) => <li key={w}>{w}</li>)}</ul></details>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+interface AvailabilityReport {
+  dryRun: boolean; vehicles: number; linkedOrders: number; intervalsCreated: number; intervalsReplaced: number;
+  stops: { corrective: number; preventive: number; days: number }; averageDays: { corrective: number | null; preventive: number | null };
+  months: { sheet: string; month: string; vehicles: number; correctiveDays: number; preventiveDays: number; availability: number | null; availabilityAll: number | null }[];
+  byVehicle: { plate: string; stops: number; days: number; longest: { start: string; days: number; kind: string } | null }[];
+  warnings: string[];
+}
+const pct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1).replace('.', ',')} %`);
+
+function AvailabilityImport() {
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [report, setReport] = useState<AvailabilityReport | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const send = async (dry: boolean) => {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      setReport(await api<AvailabilityReport>(`/imports/availability${dry ? '?dryRun=true' : ''}`, { method: 'POST', body: fd }));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No fue posible leer el cuadro');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card className="space-y-4">
+      <div>
+        <h2 className="flex items-center gap-2 font-semibold"><CalendarX size={18} /> Cuadro de disponibilidad de flota (Excel)</h2>
+        <p className="text-sm text-muted">El «Cálculo de disponibilidad» mensual (FDS por día). Reconstruye cuándo estuvo cada vehículo fuera de servicio, une las paradas que los domingos y festivos dejan partidas y las liga a su OT. Alimenta la disponibilidad y los días fuera de servicio por parada. Se puede volver a cargar: reemplaza lo cargado antes y no toca los estados registrados en el CMMS.</p>
+      </div>
+      <input type="file" accept=".xlsx" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setReport(null); }}
+        className="block w-full text-sm file:mr-3 file:h-10 file:rounded-lg file:border-0 file:bg-sky/30 file:px-3 file:font-medium file:text-brand-800" />
+      <div className="flex flex-wrap gap-2">
+        <SecondaryButton disabled={!file || busy} onClick={() => send(true)}>1. Revisar</SecondaryButton>
+        <Button disabled={!file || busy || !report?.dryRun || report.intervalsCreated === 0} onClick={() => send(false)} className="h-10">2. Aplicar</Button>
+      </div>
+      {error && <Alert>{error}</Alert>}
+      {report && (
+        <div className="space-y-3 text-sm">
+          <Alert tone={report.dryRun ? 'warn' : 'ok'}>
+            {report.dryRun ? 'Simulación (aún no se guardó nada): ' : 'Aplicado: '}
+            {report.vehicles} vehículos · {report.stops.corrective} paradas correctivas (promedio {report.averageDays.corrective?.toFixed(1).replace('.', ',') ?? '—'} d) · {report.stops.preventive} preventivas ({report.averageDays.preventive?.toFixed(1).replace('.', ',') ?? '—'} d) · {report.linkedOrders} ligadas a su OT
+          </Alert>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="text-left text-xs text-muted uppercase"><tr><th className="py-1 pr-3">Mes</th><th className="py-1 pr-3 text-right">Días correctivo</th><th className="py-1 pr-3 text-right">Días preventivo</th><th className="py-1 pr-3 text-right">Disponibilidad (como el cuadro)</th><th className="py-1 text-right">Con preventivos</th></tr></thead>
+              <tbody className="divide-y divide-line">
+                {report.months.map((m) => <tr key={m.sheet}><td className="py-1 pr-3">{m.month}</td><td className="py-1 pr-3 text-right tabular-nums">{m.correctiveDays}</td><td className="py-1 pr-3 text-right tabular-nums">{m.preventiveDays}</td><td className="py-1 pr-3 text-right tabular-nums">{pct(m.availability)}</td><td className="py-1 text-right tabular-nums">{pct(m.availabilityAll)}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted">«Como el cuadro»: (días programados − días de parada correctiva) / días programados, promediado en toda la flota del cuadro. El resumen del archivo promedia solo las primeras filas, por eso puede no coincidir con él.</p>
+          {report.byVehicle.length > 0 && <p><span className="font-medium">Más días parados: </span>{report.byVehicle.slice(0, 5).map((v) => `${v.plate} ${v.days} d${v.longest && v.longest.days >= 7 ? ` (parada de ${v.longest.days} d desde ${v.longest.start})` : ''}`).join(' · ')}</p>}
           {report.warnings.length > 0 && <details><summary className="cursor-pointer text-muted">Advertencias ({report.warnings.length})</summary><ul className="list-disc pl-5">{report.warnings.map((w) => <li key={w}>{w}</li>)}</ul></details>}
         </div>
       )}
@@ -169,6 +233,7 @@ export default function ImportPage() {
       )}
 
       {can('work_order.plan') && <HistoryImport />}
+      {can('vehicle.change_status') && <AvailabilityImport />}
     </div>
   );
 }

@@ -9,7 +9,7 @@ type Orders = Awaited<ReturnType<KpiService['ordersIn']>>;
 const BRAND = 'FF0B5E85';
 const LIGHT: Record<string, string> = { ok: 'FFD7F0DD', warn: 'FFFFF2B3', bad: 'FFF8D0CC' };
 const TYPE: Record<string, string> = { PM: 'Preventivo', INS: 'Inspección', PDM: 'Predictivo', CP: 'Correctivo programado', CE: 'Correctivo de emergencia', AUX: 'Auxilio en vía', SIN: 'Siniestro', MEJ: 'Mejora', CAM: 'Campaña' };
-const FMT = { pct: '0.0%', km: '#,##0', h: '#,##0.0', cop_km: '"$"#,##0', weeks: '0.0' } as const;
+const FMT = { pct: '0.0%', km: '#,##0', h: '#,##0.0', d: '#,##0.0', cop_km: '"$"#,##0', weeks: '0.0' } as const;
 
 function header(ws: ExcelJS.Worksheet, cols: { header: string; key: string; width: number; fmt?: string }[]) {
   ws.columns = cols.map((c) => ({ header: c.header, key: c.key, width: c.width, style: c.fmt ? { numFmt: c.fmt } : {} }));

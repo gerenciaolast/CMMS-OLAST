@@ -83,6 +83,10 @@ pnpm --filter @cmms/api fleet:import Plantilla_flota_OLAST.xlsx
 # (agrega lo nuevo, aplica correcciones, actualiza el kilometraje y el preventivo). --dry-run solo muestra los cambios.
 pnpm --filter @cmms/api history:import HOJA_DE_VIDA_DE_MANTTO_DE_VEHICULOS.xlsx --dry-run
 # También desde la app: Flota → Plantilla Excel → «Historial de mantenimiento»
+
+# Cuadro de disponibilidad mensual (FDS por día): historial de estados para disponibilidad y días fuera de servicio
+pnpm --filter @cmms/api availability:import Calculo_Disponibilidad_Flota.xlsx --dry-run
+# También desde la app: Flota → Plantilla Excel → «Cuadro de disponibilidad de flota»
 ```
 
 ### Calidad

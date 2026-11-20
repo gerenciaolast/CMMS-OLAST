@@ -19,15 +19,15 @@ export type KpiCode =
   | 'availability' | 'pm_compliance' | 'planned' | 'mtbf' | 'mttr' | 'downtime' | 'cost_per_km'
   | 'backlog' | 'schedule' | 'rework' | 'inspection' | 'sla' | 'data_quality' | 'documents';
 
-interface Def { n: number; name: string; unit: 'pct' | 'km' | 'h' | 'cop_km' | 'weeks'; target: number | [number, number] | null; direction: kpi.KpiDirection; targetLabel: string; scope: string; trend: boolean; band?: number }
+interface Def { n: number; name: string; unit: 'pct' | 'km' | 'h' | 'd' | 'cop_km' | 'weeks'; target: number | [number, number] | null; direction: kpi.KpiDirection; targetLabel: string; scope: string; trend: boolean; band?: number }
 
 export const KPI_DEFS: Record<KpiCode, Def> = {
-  availability: { n: 1, name: 'Disponibilidad de flota', unit: 'pct', target: 0.95, direction: 'higher', targetLabel: '≥ 95 %', trend: true, band: 0.03, scope: 'Estados registrados en el CMMS. El Excel no registró tiempos fuera de servicio.' },
+  availability: { n: 1, name: 'Disponibilidad de flota', unit: 'pct', target: 0.95, direction: 'higher', targetLabel: '≥ 95 %', trend: true, band: 0.03, scope: 'Horas disponibles / horas calendario. Resta toda parada por mantenimiento (preventiva y correctiva) y espera de repuestos; siniestros aparte. Usa los estados del CMMS y el cuadro de disponibilidad cargado. El detalle muestra también la cifra sin preventivos, como la calcula el cuadro.' },
   pm_compliance: { n: 2, name: 'Cumplimiento de PM', unit: 'pct', target: 0.9, direction: 'higher', targetLabel: '≥ 90 %', trend: true, scope: 'PM hechos sin pasar el intervalo del plan + 10 %, comparando cada PM con el anterior del vehículo. Incluye historial.' },
   planned: { n: 3, name: '% mantenimiento planificado (costo)', unit: 'pct', target: 0.8, direction: 'higher', targetLabel: '≥ 80 %', trend: true, scope: 'OT registradas en el CMMS (el Excel no distingue emergencia de programado).' },
   mtbf: { n: 4, name: 'MTBF (km entre fallas)', unit: 'km', target: null, direction: 'higher', targetLabel: 'Creciente', trend: true, scope: 'Km de la flota / OT correctivas (sin accidentes). Incluye historial.' },
   mttr: { n: 5, name: 'MTTR (horas por reparación)', unit: 'h', target: 24, direction: 'lower', targetLabel: '≤ 24 h', trend: true, band: 0.5, scope: 'OT correctivas registradas en el CMMS con inicio y fin de ejecución.' },
-  downtime: { n: 6, name: 'Horas fuera de servicio por evento', unit: 'h', target: null, direction: 'lower', targetLabel: 'Decreciente', trend: true, scope: 'Estados fuera de servicio por mantenimiento o repuesto registrados en el CMMS.' },
+  downtime: { n: 6, name: 'Días fuera de servicio por parada', unit: 'd', target: null, direction: 'lower', targetLabel: 'Decreciente', trend: true, scope: 'Duración promedio de las paradas por mantenimiento o repuesto que empezaron en el periodo (incluye la espera de taller y repuestos, no solo la reparación). Fuente: estados del CMMS y cuadro de disponibilidad.' },
   cost_per_km: { n: 7, name: 'Costo de mantenimiento por km', unit: 'cop_km', target: null, direction: 'lower', targetLabel: 'Línea base', trend: true, scope: 'Mano de obra + repuestos + servicios externos / km. Sin siniestros. Incluye historial.' },
   backlog: { n: 8, name: 'Backlog', unit: 'weeks', target: [2, 4], direction: 'range', targetLabel: '2 – 4 semanas', trend: false, scope: 'Horas estimadas de OT abiertas / capacidad semanal de técnicos propios (40 h c/u). Foto de hoy.' },
   schedule: { n: 9, name: 'Cumplimiento del programa', unit: 'pct', target: 0.85, direction: 'higher', targetLabel: '≥ 85 %', trend: true, scope: 'OT con fecha programada, terminadas a tiempo.' },
@@ -64,7 +64,7 @@ export class KpiService {
         id: true, plate: true, status: true, year: true, serviceType: true, createdAt: true,
         site: { select: { code: true, name: true } },
         vehicleModel: { select: { make: true, model: true, vehicleType: { select: { code: true, name: true } } } },
-        statusLog: { select: { status: true, startedAt: true, endedAt: true } },
+        statusLog: { select: { status: true, startedAt: true, endedAt: true, reason: true, workOrderId: true } },
         readings: { where: { meterType: 'odometer' }, select: { accumulatedValue: true, readAt: true } },
         documents: { select: { expiresAt: true, documentType: { select: { code: true, isBlocking: true } } } },
         maintenancePlan: { select: { code: true, routines: { select: { intervalDistance: true } } } },
@@ -97,6 +97,8 @@ export class KpiService {
       accident: o.type === 'SIN' || o.failures.some((f) => f.cause === 'ACC'),
     }));
     markHistoricalRework(ordersExt);
+    const woType = new Map(orders.map((o) => [o.id, o.type]));
+    for (const v of vehicles) for (const l of v.statusLog) (l as typeof l & { woType?: string }).woType = l.workOrderId ? woType.get(l.workOrderId) : undefined;
     return { tz: org.timezone, vehicles, orders: ordersExt, inspections, priorities, technicians, blockingTypes: blockingTypes.map((t) => t.code) };
   }
 
@@ -125,7 +127,9 @@ export class KpiService {
 
     // 1. Disponibilidad
     const intervals = d.vehicles.flatMap((v) => v.statusLog.map((l) => ({ vehicleId: v.id, ...l })));
-    out.availability = { value: end > from ? kpi.fleetAvailability(intervals, from, end) : null, detail: '' };
+    const noPm = intervals.map((i) => (isPreventiveStop(i) ? { ...i, status: 'operational' as VehicleStatus } : i));
+    const withoutPm = end > from ? kpi.fleetAvailability(noPm, from, end) : null;
+    out.availability = { value: end > from ? kpi.fleetAvailability(intervals, from, end) : null, detail: withoutPm == null ? '' : `Sin preventivos (como el cuadro): ${(withoutPm * 100).toFixed(1).replace('.', ',')} %` };
 
     // 2. Cumplimiento PM por intervalo real
     let pmOk = 0, pmAll = 0;
@@ -156,16 +160,13 @@ export class KpiService {
     const repairs = this.doneIn(d, from, to, (o) => corrective(o) && !o.isHistorical && !!o.actualStart && !!o.actualEnd).map((o) => ({ actualStart: o.actualStart!, actualEnd: o.actualEnd! }));
     out.mttr = { value: kpi.mttrHours(repairs), detail: `${repairs.length} reparaciones` };
 
-    // 6. Horas fuera de servicio por evento
-    let downH = 0, events = 0;
-    for (const i of intervals) {
-      if (!UNAVAILABLE_FOR_AVAILABILITY.includes(i.status)) continue;
-      const s = Math.max(i.startedAt.getTime(), from.getTime());
-      const e = Math.min((i.endedAt ?? end).getTime(), end.getTime());
-      if (e > s) downH += (e - s) / HOUR;
-      if (i.startedAt >= from && i.startedAt < to) events++;
-    }
-    out.downtime = { value: events ? downH / events : null, detail: `${Math.round(downH)} h en ${events} evento(s)` };
+    // 6. Días fuera de servicio por parada (paradas que empezaron en el periodo, duración completa)
+    const stops = intervals.filter((i) => UNAVAILABLE_FOR_AVAILABILITY.includes(i.status) && i.startedAt >= from && i.startedAt < to);
+    const dur = (i: (typeof stops)[number]) => ((i.endedAt ?? now).getTime() - i.startedAt.getTime()) / (24 * HOUR);
+    const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+    const corrStops = stops.filter((i) => !isPreventiveStop(i)).map(dur), pmStops = stops.filter(isPreventiveStop).map(dur);
+    const d1 = (v: number | null) => (v == null ? '—' : `${v.toFixed(1).replace('.', ',')} d`);
+    out.downtime = { value: mean(stops.map(dur)), detail: stops.length ? `${stops.length} paradas · correctiva ${d1(mean(corrStops))} (${corrStops.length}) · preventiva ${d1(mean(pmStops))} (${pmStops.length})` : '0 paradas' };
 
     // 8. Backlog (foto de hoy)
     const open = d.orders.filter((o) => OPEN.includes(o.status));
@@ -380,4 +381,9 @@ function markHistoricalRework(orders: { id: string; vehicleId: string; type: str
       o.isRework = !!findReworkOrigin({ vehicleId: o.vehicleId, componentCodes: codes, openedAt: o.doneAt!, odometer: o.odometerIn! }, history.filter((h) => h.day < day));
     history.push({ workOrderId: o.id, vehicleId: o.vehicleId, componentCodes: codes, closedAt: o.doneAt!, odometerOut: o.odometerIn!, day });
   }
+}
+
+/** Parada preventiva: ligada a una OT preventiva o marcada así en el cuadro de disponibilidad. */
+function isPreventiveStop(i: { status: string; reason: string | null; woType?: string }) {
+  return UNAVAILABLE_FOR_AVAILABILITY.includes(i.status as VehicleStatus) && (PREVENTIVE.includes(i.woType ?? '') || /parada preventiva/i.test(i.reason ?? ''));
 }
