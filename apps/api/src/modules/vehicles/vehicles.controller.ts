@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
+import { randomBytes } from 'node:crypto';
+import { hash } from '@node-rs/argon2';
 import { Audit, AuthUser, CurrentUser, RequirePermissions } from '../../common/auth.decorators';
 import { ZodPipe } from '../../common/zod.pipe';
 import { PrismaService } from '../../common/prisma.service';
@@ -134,6 +136,7 @@ export class VehiclesController {
         site: { select: { code: true, name: true } },
         vehicles: { select: { isPrimary: true, vehicle: { select: { id: true, plate: true } } } },
       },
+      // userId indica si ya tiene acceso a la app
       orderBy: { fullName: 'asc' },
     });
   }
@@ -158,6 +161,29 @@ export class VehiclesController {
       where: { id },
       data: { ...data, ...(data.fullName ? { fullName: data.fullName.toUpperCase() } : {}), ...(siteCode !== undefined ? { siteId: await this.siteIdOrNull(u, siteCode) } : {}) },
     });
+  }
+
+  /** Da acceso a la app a un conductor (rol Conductor, su sede) para que haga la inspección diaria. */
+  @RequirePermissions('vehicle.edit')
+  @Audit('driver')
+  @Post('drivers/:id/access')
+  async grantAccess(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(z.object({ email: z.string().email() }))) b: { email: string }) {
+    const d = await this.prisma.driver.findFirstOrThrow({ where: { id, organizationId: u.organizationId } });
+    if (d.userId) throw new AppError('ALREADY_HAS_ACCESS', 'El conductor ya tiene acceso a la app');
+    if (!d.siteId) throw new AppError('SITE_REQUIRED', 'Asigne primero la sede del conductor');
+    const role = await this.prisma.role.findUniqueOrThrow({ where: { organizationId_code: { organizationId: u.organizationId, code: 'driver' } } });
+    const temporaryPassword = randomBytes(9).toString('base64url');
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          organizationId: u.organizationId, roleId: role.id, email: b.email.toLowerCase(), fullName: d.fullName, phone: d.phone,
+          passwordHash: await hash(temporaryPassword), mustChangePassword: true, sites: { create: [{ siteId: d.siteId! }] },
+        },
+      });
+      await tx.driver.update({ where: { id }, data: { userId: created.id, email: d.email ?? b.email.toLowerCase() } });
+      return created;
+    });
+    return { userId: user.id, email: user.email, temporaryPassword };
   }
 
   private async siteIdOrNull(u: AuthUser, code?: string | null) {

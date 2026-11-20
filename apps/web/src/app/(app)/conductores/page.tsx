@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileSpreadsheet, Plus, Search } from 'lucide-react';
+import { FileSpreadsheet, KeyRound, Plus, Search, Smartphone } from 'lucide-react';
 import { Alert, Badge, Button, Card, Field, Modal, SecondaryButton, Select } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -24,6 +24,8 @@ export default function DriversPage() {
   const [editing, setEditing] = useState<Driver | 'new' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [access, setAccess] = useState<Driver | null>(null);
+  const [granted, setGranted] = useState<{ name: string; email: string; temporaryPassword: string } | null>(null);
 
   const load = useCallback(() => api<Driver[]>('/drivers?includeInactive=true').then(setRows), []);
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function DriversPage() {
         <Card className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="border-b border-line bg-canvas text-left text-xs tracking-wide text-muted uppercase">
-              <tr><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Cédula</th><th className="px-4 py-3">Teléfono</th><th className="px-4 py-3">Sede</th><th className="px-4 py-3">Licencia</th><th className="px-4 py-3">Vehículos</th><th /></tr>
+              <tr><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Cédula</th><th className="px-4 py-3">Teléfono</th><th className="px-4 py-3">Sede</th><th className="px-4 py-3">Licencia</th><th className="px-4 py-3">Vehículos</th><th className="px-4 py-3">App</th><th /></tr>
             </thead>
             <tbody className="divide-y divide-line">
               {filtered.map((d) => (
@@ -82,6 +84,11 @@ export default function DriversPage() {
                       ))}
                     </div>
                   </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {d.userId ? <Badge className="border-ok/40 text-ok"><Smartphone size={12} className="mr-1" /> Con acceso</Badge>
+                      : can('vehicle.edit') && d.active ? <button className="inline-flex items-center gap-1 font-medium text-brand hover:underline" onClick={() => { setError(null); setAccess(d); }}><KeyRound size={14} /> Dar acceso</button>
+                      : <span className="text-muted">—</span>}
+                  </td>
                   <td className="px-4 py-3 text-right">{can('vehicle.edit') && <button className="font-medium text-brand hover:underline" onClick={() => setEditing(d)}>Editar</button>}</td>
                 </tr>
               ))}
@@ -89,6 +96,46 @@ export default function DriversPage() {
           </table>
         </Card>
       )}
+
+      <Modal title="Acceso a la app para la inspección diaria" open={access !== null} onClose={() => { setAccess(null); setError(null); }}>
+        {access && (
+          <form
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const email = String(new FormData(e.currentTarget).get('email') ?? '').trim();
+              try {
+                const r = await api<{ email: string; temporaryPassword: string }>(`/drivers/${access.id}/access`, { method: 'POST', json: { email } });
+                setGranted({ name: access.fullName, ...r });
+                setAccess(null);
+                await load();
+              } catch (err) {
+                setError(err instanceof ApiError ? (err.code === 'DUPLICATE' ? 'Ya existe un usuario con ese correo' : err.message) : 'No fue posible crear el acceso');
+              }
+            }}
+          >
+            {error && <Alert>{error}</Alert>}
+            <p className="text-sm text-muted"><strong className="text-ink">{access.fullName}</strong> podrá entrar desde su celular y hacer la inspección diaria solo de los vehículos que tiene asignados. Al primer ingreso debe cambiar la contraseña.</p>
+            {!access.site && <Alert tone="warn">El conductor no tiene sede. Edítelo y asígnele una antes de darle acceso.</Alert>}
+            <Field label="Correo del conductor (será su usuario)" name="email" type="email" required defaultValue={access.email ?? ''} />
+            <Button type="submit" className="w-full" disabled={!access.site}>Crear acceso</Button>
+          </form>
+        )}
+      </Modal>
+
+      <Modal title="Acceso creado" open={granted !== null} onClose={() => setGranted(null)}>
+        {granted && (
+          <div className="space-y-3 text-sm">
+            <p>Entregue estos datos a <strong>{granted.name}</strong> de forma personal (no por grupos de chat). La contraseña temporal <strong>no se volverá a mostrar</strong>.</p>
+            <div className="rounded-lg border border-line bg-canvas p-3 font-mono text-[15px]">
+              <p>Usuario: {granted.email}</p>
+              <p>Contraseña temporal: {granted.temporaryPassword}</p>
+            </div>
+            <SecondaryButton className="w-full" onClick={() => void navigator.clipboard?.writeText(`Usuario: ${granted.email}\nContraseña temporal: ${granted.temporaryPassword}`)}>Copiar</SecondaryButton>
+            <Button className="w-full" onClick={() => setGranted(null)}>Listo</Button>
+          </div>
+        )}
+      </Modal>
 
       <Modal title={current ? 'Editar conductor' : 'Nuevo conductor'} open={editing !== null} onClose={() => { setEditing(null); setError(null); }}>
         <form

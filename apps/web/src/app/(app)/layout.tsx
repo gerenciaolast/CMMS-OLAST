@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LogOut, Menu, X } from 'lucide-react';
 import { useSession } from '@/lib/session';
-import { NAV } from '@/lib/nav';
+import { NAV, allowed } from '@/lib/nav';
 import { OlastLogo } from '@/components/brand';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -31,7 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
 
-  const items = NAV.filter((n) => !n.permission || can(n.permission));
+  const items = NAV.filter((n) => allowed(n, can));
   const nav = (
     <nav className="space-y-1">
       {items.map((n) => {

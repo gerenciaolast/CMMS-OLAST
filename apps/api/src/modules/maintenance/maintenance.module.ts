@@ -10,6 +10,6 @@ import { WorkOrdersService } from './work-orders.service';
   imports: [VehiclesModule, PmModule],
   controllers: [MaintenanceController],
   providers: [WorkRequestsService, WorkOrdersService, StorageService],
-  exports: [WorkOrdersService],
+  exports: [WorkOrdersService, WorkRequestsService, StorageService],
 })
 export class MaintenanceModule {}

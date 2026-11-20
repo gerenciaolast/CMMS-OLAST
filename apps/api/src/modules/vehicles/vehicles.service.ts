@@ -19,6 +19,7 @@ import {
 import type { Criticality } from '@cmms/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { PmService } from '../pm/pm.service';
+import { ComplianceService } from '../compliance/compliance.service';
 import { AppError } from '../../common/errors';
 import { AuthUser, siteScope } from '../../common/auth.decorators';
 import type { CreateVehicle, UpdateVehicle } from './vehicles.schemas';
@@ -40,7 +41,7 @@ type VehicleWithSummary = Prisma.VehicleGetPayload<{ include: typeof SUMMARY_INC
 
 @Injectable()
 export class VehiclesService {
-  constructor(private readonly prisma: PrismaService, private readonly pm: PmService) {}
+  constructor(private readonly prisma: PrismaService, private readonly pm: PmService, private readonly compliance: ComplianceService) {}
 
   /** Agrega completitud y pendientes calculados por el dominio. */
   private decorate(v: VehicleWithSummary) {
@@ -424,11 +425,14 @@ export class VehiclesService {
     if (!type) throw new AppError('UNKNOWN_DOCUMENT_TYPE', `Tipo de documento desconocido: ${typeCode}`);
     if (b.issuedAt && b.expiresAt && b.expiresAt < b.issuedAt)
       throw new AppError('INVALID_DATES', 'El vencimiento no puede ser anterior a la expedición');
-    return this.prisma.vehicleDocument.upsert({
+    const doc = await this.prisma.vehicleDocument.upsert({
       where: { vehicleId_documentTypeId: { vehicleId: id, documentTypeId: type.id } },
       create: { vehicleId: id, documentTypeId: type.id, ...b },
       update: b,
       include: { documentType: true },
     });
+    // Documento obligatorio vencido → bloqueo administrativo; renovado → desbloqueo (doc 02 P9).
+    const statusChange = await this.compliance.evaluateVehicle(id);
+    return { ...doc, vehicleStatusChange: statusChange };
   }
 }

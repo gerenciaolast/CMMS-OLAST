@@ -69,13 +69,13 @@ export const DOCUMENT_TYPES = [
   { code: 'SAN', name: 'Concepto sanitario del vehículo (transporte de medicamentos/alimentos)', isBlocking: false },
 ];
 
-/** Checklist pre-operacional base (doc 03 §7). [texto, componente, crítico, foto al fallar] */
-export const BASE_CHECKLIST: [string, string | null, boolean, boolean][] = [
+/** Checklist pre-operacional base (doc 03 §7). [texto, componente, crítico, foto al fallar, tipos excluidos] */
+export const BASE_CHECKLIST: [string, string | null, boolean, boolean, string[]?][] = [
   ['Frenos de servicio y estacionamiento', 'FRN', true, false],
   ['Dirección (juego, ruidos)', 'DIR', true, false],
   ['Neumáticos: estado, presión visual, cortes', 'NEU', true, true],
   ['Luces: delanteras, freno, direccionales, reversa', 'ILU', true, false],
-  ['Cinturones de seguridad', 'SEG', true, false],
+  ['Cinturones de seguridad', 'SEG', true, false, ['MOT', 'MCA']],
   ['Sin fugas de combustible ni de líquido de frenos', 'COM', true, true],
   ['Fugas de aceite o refrigerante', 'MOT', false, true],
   ['Limpiaparabrisas y vidrios / visibilidad', 'CAR', true, false],
@@ -83,7 +83,8 @@ export const BASE_CHECKLIST: [string, string | null, boolean, boolean][] = [
   ['Niveles: aceite, refrigerante, líquido de frenos, lavaparabrisas', 'MOT', false, false],
   ['Testigos del tablero apagados', 'ELN', false, true],
   ['Bocina y alarma de reversa', 'ILU', false, false],
-  ['Equipo de seguridad: extintor vigente, botiquín, triángulos', 'SEG', false, false],
+  ['Equipo de seguridad: extintor vigente, botiquín, triángulos', 'SEG', false, false, ['MOT', 'MCA']],
+  ['Guayas de embrague y freno: ajuste y estado', 'EMB', true, false, ['LIV', 'CAR', 'CPE', 'TRC', 'BUS', 'REM', 'MAQ']],
   ['Documentos del vehículo a bordo', null, false, false],
   ['Carrocería y furgón: daños nuevos', 'CAR', false, true],
   ['Limpieza general de cabina', null, false, false],

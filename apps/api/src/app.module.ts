@@ -14,6 +14,9 @@ import { OrganizationModule } from './modules/organization/organization.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { PmModule } from './modules/pm/pm.module';
+import { InspectionsModule } from './modules/inspections/inspections.module';
+import { ComplianceModule } from './modules/compliance/compliance.service';
+import { NotificationsModule } from './modules/notifications/notifications.service';
 
 @Module({})
 export class AppModule {
@@ -37,6 +40,9 @@ export class AppModule {
         VehiclesModule,
         MaintenanceModule,
         PmModule,
+        NotificationsModule,
+        ComplianceModule,
+        InspectionsModule,
       ],
       controllers: [HealthController],
       providers: [

@@ -90,12 +90,14 @@ async function main() {
       create: { vehicleTypeId: t.id, name: `Pre-operacional ${vt.name}`, kind: 'pre_trip', version: 1 },
       update: {},
     });
-    await prisma.checklistItem.deleteMany({ where: { checklistTemplateId: tpl.id } });
-    await prisma.checklistItem.createMany({
-      data: C.BASE_CHECKLIST.map(([text, componentCode, isCritical, requiresPhotoOnFail], i) => ({
-        checklistTemplateId: tpl.id, sequence: i + 1, text, componentCode, isCritical, requiresPhotoOnFail,
-      })),
-    });
+    // Solo si la plantilla está vacía: las inspecciones guardadas referencian los ítems (cambios = nueva versión).
+    if ((await prisma.checklistItem.count({ where: { checklistTemplateId: tpl.id } })) === 0) {
+      await prisma.checklistItem.createMany({
+        data: C.BASE_CHECKLIST.filter(([, , , , excluded]) => !excluded?.includes(vt.code)).map(([text, componentCode, isCritical, requiresPhotoOnFail], i) => ({
+          checklistTemplateId: tpl.id, sequence: i + 1, text, componentCode, isCritical, requiresPhotoOnFail,
+        })),
+      });
+    }
   }
 
   const components = await seedComponents();

@@ -2,7 +2,7 @@
 
 Sistema de Gestión de Mantenimiento Computarizado (CMMS) para la flota de vehículos de **OLAST**.
 
-> **Estado:** modelo aprobado por gerencia · Sprints 0 a **3 (preventivo y alarmas) terminados** · siguiente: Sprint 4, inspección diaria y documentos.
+> **Estado:** modelo aprobado por gerencia · Sprints 0 a **4 (inspección diaria y documentos) terminados** · siguiente: Sprint 5, indicadores.
 
 ## Objetivo
 
@@ -55,6 +55,14 @@ pnpm dev                                  # API en :3001 · web en :3000
 ```
 
 El primer ingreso del administrador obliga a cambiar la contraseña.
+
+### Inspección diaria (conductores)
+
+1. **Conductores → Dar acceso**: se crea el usuario del conductor (rol Conductor, su sede) con una contraseña temporal que se muestra una sola vez.
+2. El conductor entra desde el celular → **Hacer la inspección diaria** → ve solo los vehículos que tiene asignados.
+3. Defecto en ítem crítico ⇒ NO APTO, vehículo fuera de servicio, aviso automático y notificación a jefes/supervisores de la sede. Si el defecto ya estaba reportado, se liga al aviso abierto (no se duplica).
+4. Correo: configure `SMTP_*` y `APP_URL` en `apps/api/.env`; sin SMTP las notificaciones quedan visibles en Inicio.
+5. **Documentos**: SOAT/técnico-mecánica vencidos inmovilizan el vehículo (fuera de servicio administrativo) y la renovación lo libera; alertas a 30/15/7 días, también para licencias.
 
 ### Carga del inventario de flota
 

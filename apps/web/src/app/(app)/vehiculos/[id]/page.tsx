@@ -11,7 +11,8 @@ import { useSession } from '@/lib/session';
 import { OWNERSHIP_LABEL, STATUS_LABEL, STATUS_TONE, day, daysUntil, km, money, shortDay, type Driver, type VehicleDetail } from '@/lib/fleet';
 import { PRIORITY_TONE, WO_STATUS_LABEL, WO_STATUS_TONE, WO_TYPE_LABEL, type PmPlan, type PmScheduleRow, type WorkOrderRow } from '@/lib/maintenance';
 import { PmBadge, PmBar } from '@/components/pm';
-import { CalendarClock } from 'lucide-react';
+import { CalendarClock, ClipboardCheck } from 'lucide-react';
+import { RESULT_LABEL, RESULT_TONE, time, type InspectionSummary } from '@/lib/inspection';
 
 type Dialog = null | 'reading' | 'status' | 'criticality' | 'edit' | 'transfer' | 'drivers' | 'tires' | 'plan' | { doc: string } | { baseline: PmScheduleRow };
 interface Site { code: string; name: string }
@@ -81,6 +82,7 @@ export default function VehiclePage() {
   const [orders, setOrders] = useState<WorkOrderRow[] | null>(null);
   const [pm, setPm] = useState<{ plan: { id: string; code: string; name: string } | null; schedules: PmScheduleRow[] } | null>(null);
   const [plans, setPlans] = useState<PmPlan[]>([]);
+  const [inspections, setInspections] = useState<InspectionSummary[]>([]);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -91,6 +93,7 @@ export default function VehiclePage() {
         api<VehicleDetail>(`/vehicles/${id}`).then(setV),
         api<{ plan: { id: string; code: string; name: string } | null; schedules: PmScheduleRow[] }>(`/vehicles/${id}/pm`).then(setPm).catch(() => undefined),
         api<WorkOrderRow[]>(`/work-orders?vehicleId=${id}&status=all&take=500`).then(setOrders).catch(() => setOrders([])),
+        api<InspectionSummary[]>(`/vehicles/${id}/inspections`).then(setInspections).catch(() => undefined),
       ]).catch((e) => setLoadError(errorText(e))),
     [id],
   );
@@ -430,6 +433,28 @@ export default function VehiclePage() {
           )}
         </Card>
 
+        {/* Inspecciones pre-operacionales */}
+        <Card>
+          <h2 className="mb-2 flex items-center gap-2 font-semibold"><ClipboardCheck size={18} /> Inspecciones diarias</h2>
+          {inspections.length === 0 ? (
+            <p className="text-sm text-muted">Sin inspecciones registradas. El conductor la hace desde «Inspección diaria» en su celular.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {inspections.slice(0, 10).map((i) => (
+                <li key={i.id}>
+                  <Link href={`/inspeccion/${i.id}`} className="flex items-center justify-between gap-3 py-2 text-sm hover:text-brand">
+                    <div className="min-w-0">
+                      <p className="font-medium">{day(i.performedAt)} {time(i.performedAt)} · {km(i.odometer)}</p>
+                      <p className="truncate text-xs text-muted">{i.signatureName}{i.results.length ? ` · ${i.results.map((x) => x.item.text.split(/[:(]/)[0]!.trim()).join(', ')}` : ''}</p>
+                    </div>
+                    <Badge className={RESULT_TONE[i.result]}>{RESULT_LABEL[i.result]}</Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
         {/* Historial de estados */}
         <Card>
           <h2 className="mb-2 flex items-center gap-2 font-semibold"><History size={18} /> Historial de estados</h2>
@@ -687,11 +712,14 @@ export default function VehiclePage() {
             submitLabel="Guardar documento"
             onSubmit={async (f) => {
               const s = (k: string) => (String(f.get(k) ?? '').trim() || undefined);
-              await api(`/vehicles/${v.id}/documents/${dialog.doc}`, {
+              const r = await api<{ vehicleStatusChange: VehicleStatus | null }>(`/vehicles/${v.id}/documents/${dialog.doc}`, {
                 method: 'PUT',
                 json: { number: s('number'), issuer: s('issuer'), issuedAt: s('issuedAt'), expiresAt: s('expiresAt') },
               });
-              await done('Documento guardado');
+              await done(
+                r.vehicleStatusChange === 'out_of_service_administrative' ? 'Documento guardado. Está vencido: el vehículo quedó FUERA DE SERVICIO ADMINISTRATIVO hasta registrar la renovación.'
+                  : r.vehicleStatusChange ? `Documento guardado. El vehículo volvió a ${STATUS_LABEL[r.vehicleStatusChange]}.` : 'Documento guardado',
+              );
             }}
           >
             {(() => {

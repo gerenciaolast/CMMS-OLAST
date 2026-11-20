@@ -123,6 +123,7 @@ export class WorkRequestsService {
         OR: [
           { workRequest: { organizationId: user.organizationId, vehicle: siteScope(user) } },
           { workOrder: { organizationId: user.organizationId, vehicle: siteScope(user) } },
+          { inspectionResult: { inspection: { organizationId: user.organizationId, vehicle: siteScope(user) } } },
         ],
       },
     });

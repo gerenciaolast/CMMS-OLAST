@@ -7,6 +7,7 @@ import { suggestPriority } from '@cmms/domain';
 import type { Criticality, FailureConsequence } from '@cmms/shared';
 import { Alert, Badge, Button, Card, Field, Modal, Select } from '@/components/ui';
 import { AuthImage } from '@/components/auth-image';
+import { shrinkPhoto } from '@/lib/image';
 import { api, ApiError } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { day, km, type VehicleSummary } from '@/lib/fleet';
@@ -106,7 +107,7 @@ function ReportForm({ onDone }: { onDone: (msg: string) => void }) {
       <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-brand/50 px-3 text-sm text-brand">
         <Camera size={18} /> {photos.length ? `${photos.length} foto(s) lista(s)` : 'Tomar o adjuntar fotos (máx. 3)'}
         <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple className="sr-only"
-          onChange={(e) => setPhotos(Array.from(e.target.files ?? []).slice(0, 3))} />
+          onChange={async (e) => setPhotos(await Promise.all(Array.from(e.target.files ?? []).slice(0, 3).map((f) => shrinkPhoto(f))))} />
       </label>
       <Button type="submit" disabled={busy || !ready} className="w-full gap-2"><Megaphone size={18} /> {busy ? 'Enviando…' : 'Reportar falla'}</Button>
     </form>

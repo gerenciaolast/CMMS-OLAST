@@ -47,6 +47,8 @@ export interface VehicleSummary {
 
 export interface Driver {
   id: string;
+  /** Usuario de la app (rol Conductor) para la inspección diaria. */
+  userId?: string | null;
   fullName: string;
   documentId: string | null;
   phone: string | null;

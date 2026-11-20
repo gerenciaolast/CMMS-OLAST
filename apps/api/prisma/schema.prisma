@@ -247,6 +247,7 @@ model ChecklistTemplate {
 
   vehicleType VehicleType     @relation(fields: [vehicleTypeId], references: [id])
   items       ChecklistItem[]
+  inspections Inspection[]
 
   @@unique([vehicleTypeId, kind, version])
   @@map("checklist_templates")
@@ -261,7 +262,8 @@ model ChecklistItem {
   isCritical          Boolean @default(false) @map("is_critical")
   requiresPhotoOnFail Boolean @default(false) @map("requires_photo_on_fail")
 
-  template ChecklistTemplate @relation(fields: [checklistTemplateId], references: [id], onDelete: Cascade)
+  template ChecklistTemplate  @relation(fields: [checklistTemplateId], references: [id], onDelete: Cascade)
+  results  InspectionResult[]
 
   @@map("checklist_items")
 }
@@ -336,6 +338,7 @@ model Driver {
   organization Organization    @relation(fields: [organizationId], references: [id])
   site         Site?           @relation(fields: [siteId], references: [id])
   vehicles     VehicleDriver[]
+  inspections  Inspection[]
 
   @@unique([organizationId, documentId])
   @@map("drivers")
@@ -394,6 +397,7 @@ model Vehicle {
   workOrders      WorkOrder[]
   maintenancePlan MaintenancePlan?    @relation(fields: [maintenancePlanId], references: [id])
   pmSchedules     VehiclePmSchedule[]
+  inspections     Inspection[]
 
   @@unique([organizationId, plate])
   @@index([siteId, status])
@@ -643,9 +647,10 @@ model WorkRequest {
   reviewedById    String?           @map("reviewed_by_id") @db.Uuid
   reviewedAt      DateTime?         @map("reviewed_at") @db.Timestamptz
 
-  vehicle   Vehicle      @relation(fields: [vehicleId], references: [id])
-  workOrder WorkOrder?   @relation(fields: [workOrderId], references: [id])
-  photos    Attachment[]
+  vehicle           Vehicle            @relation(fields: [vehicleId], references: [id])
+  workOrder         WorkOrder?         @relation(fields: [workOrderId], references: [id])
+  photos            Attachment[]
+  inspectionResults InspectionResult[]
 
   @@unique([organizationId, number])
   @@index([status, reportedAt])
@@ -838,8 +843,11 @@ model Attachment {
   uploadedById  String?  @map("uploaded_by_id") @db.Uuid
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  workRequest WorkRequest? @relation(fields: [workRequestId], references: [id], onDelete: Cascade)
-  workOrder   WorkOrder?   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  inspectionResultId String? @map("inspection_result_id") @db.Uuid
+
+  workRequest      WorkRequest?      @relation(fields: [workRequestId], references: [id], onDelete: Cascade)
+  workOrder        WorkOrder?        @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  inspectionResult InspectionResult? @relation(fields: [inspectionResultId], references: [id], onDelete: Cascade)
 
   @@map("attachments")
 }
@@ -926,4 +934,74 @@ model VehiclePmSchedule {
   @@unique([vehicleId, routineId])
   @@index([status])
   @@map("vehicle_pm_schedules")
+}
+
+// ───────────── Inspección pre-operacional (Sprint 4 · doc 02 P3) ─────────────
+
+enum InspectionResultKind {
+  fit
+  fit_with_observations
+  unfit
+}
+
+model Inspection {
+  id              String               @id @default(uuid()) @db.Uuid
+  organizationId  String               @map("organization_id") @db.Uuid
+  vehicleId       String               @map("vehicle_id") @db.Uuid
+  templateId      String               @map("template_id") @db.Uuid
+  driverId        String?              @map("driver_id") @db.Uuid
+  userId          String               @map("user_id") @db.Uuid
+  performedAt     DateTime             @default(now()) @map("performed_at") @db.Timestamptz
+  odometer        Int
+  result          InspectionResultKind
+  signatureName   String               @map("signature_name")
+  durationSeconds Int?                 @map("duration_seconds")
+  latitude        Decimal?             @db.Decimal(9, 6)
+  longitude       Decimal?             @db.Decimal(9, 6)
+
+  vehicle  Vehicle            @relation(fields: [vehicleId], references: [id])
+  template ChecklistTemplate  @relation(fields: [templateId], references: [id])
+  driver   Driver?            @relation(fields: [driverId], references: [id])
+  results  InspectionResult[]
+
+  @@index([vehicleId, performedAt])
+  @@index([performedAt])
+  @@map("inspections")
+}
+
+model InspectionResult {
+  id              String  @id @default(uuid()) @db.Uuid
+  inspectionId    String  @map("inspection_id") @db.Uuid
+  itemId          String  @map("item_id") @db.Uuid
+  answer          String /// ok | defect | na
+  comment         String?
+  workRequestId   String? @map("work_request_id") @db.Uuid
+  /// true si el defecto ya estaba reportado en un aviso abierto (no se duplica).
+  alreadyReported Boolean @default(false) @map("already_reported")
+
+  inspection  Inspection    @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  item        ChecklistItem @relation(fields: [itemId], references: [id])
+  workRequest WorkRequest?  @relation(fields: [workRequestId], references: [id])
+  photos      Attachment[]
+
+  @@map("inspection_results")
+}
+
+/// Notificaciones enviadas (correo) o pendientes de envío; también se muestran en la app.
+model Notification {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  userId         String?   @map("user_id") @db.Uuid
+  kind           String /// critical_defect | document_expiry | pm_due | …
+  title          String
+  body           String
+  link           String?
+  channel        String    @default("email")
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz
+  error          String?
+  dedupeKey      String?   @unique @map("dedupe_key")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
