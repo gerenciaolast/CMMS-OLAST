@@ -87,7 +87,17 @@ pnpm --filter @cmms/api history:import HOJA_DE_VIDA_DE_MANTTO_DE_VEHICULOS.xlsx 
 # Cuadro de disponibilidad mensual (FDS por día): historial de estados para disponibilidad y días fuera de servicio
 pnpm --filter @cmms/api availability:import Calculo_Disponibilidad_Flota.xlsx --dry-run
 # También desde la app: Flota → Plantilla Excel → «Cuadro de disponibilidad de flota»
+
+# Licencias de tránsito (tarjetas de propiedad) desde un JSON [{ "plate": "ABC123", "vin": …, "engineNumber": … }]
+# El archivo trae datos de propietarios: guárdelo fuera del repositorio.
+pnpm --filter @cmms/api registrations:import licencias.json --dry-run
 ```
+
+### Hoja de vida en PDF
+
+- **Un vehículo:** hoja de vida → «Ficha en PDF» (`GET /api/v1/vehicles/:id/sheet`).
+- **Toda la flota o una sede:** Flota → «Fichas en PDF» (`GET /api/v1/vehicle-sheets?site=BOG`); cada vehículo empieza en página nueva.
+- Incluye identificación y números (VIN, motor, serie, chasis), licencia de tránsito, operación, llantas, documentos, preventivo y últimas intervenciones (costos solo para quien tiene permiso de ver costos). Fuente Poppins (OFL, en `apps/api/assets/fonts`) y logo del manual de marca.
 
 ### Calidad
 

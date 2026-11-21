@@ -6,12 +6,13 @@ import { AlertTriangle, ArrowLeft, ArrowRightLeft, Megaphone, Wrench, CheckCircl
 import { TIRE_AXLE_LABEL, TIRE_REASON_LABEL, tirePositions, type TireAxle } from '@cmms/domain';
 import type { VehicleStatus } from '@cmms/shared';
 import { Alert, Badge, Button, Card, CriticalityBadge, Field, Modal, Progress, SecondaryButton, Select } from '@/components/ui';
-import { api, ApiError } from '@/lib/api';
+import { api, apiDownload, ApiError } from '@/lib/api';
+import { RegistrationCard } from '@/components/registration';
 import { useSession } from '@/lib/session';
 import { OWNERSHIP_LABEL, STATUS_LABEL, STATUS_TONE, day, daysUntil, km, money, shortDay, type Driver, type VehicleDetail } from '@/lib/fleet';
 import { PRIORITY_TONE, WO_STATUS_LABEL, WO_STATUS_TONE, WO_TYPE_LABEL, type PmPlan, type PmScheduleRow, type WorkOrderRow } from '@/lib/maintenance';
 import { PmBadge, PmBar } from '@/components/pm';
-import { CalendarClock, ClipboardCheck } from 'lucide-react';
+import { CalendarClock, ClipboardCheck, FileDown } from 'lucide-react';
 import { RESULT_LABEL, RESULT_TONE, time, type InspectionSummary } from '@/lib/inspection';
 
 type Dialog = null | 'reading' | 'status' | 'criticality' | 'edit' | 'transfer' | 'drivers' | 'tires' | 'plan' | { doc: string } | { baseline: PmScheduleRow };
@@ -141,17 +142,26 @@ export default function VehiclePage() {
             <p className="text-xs text-muted">{v.lastReadingAt ? `Última lectura ${day(v.lastReadingAt)}` : 'Sin lectura'}</p>
           </div>
         </div>
-        {!retired && (
-          <div className="flex flex-wrap gap-2">
-            {can('work_request.create') && <Link href={`/avisos?vehiculo=${v.id}`}><SecondaryButton className="border-danger/40 text-danger"><Megaphone size={16} /> Reportar falla</SecondaryButton></Link>}
-            {can('meter.record') && <SecondaryButton onClick={() => setDialog('reading')}><Gauge size={16} /> Registrar km</SecondaryButton>}
-            {can('vehicle.change_status') && <SecondaryButton onClick={() => setDialog('status')}><Truck size={16} /> Cambiar estado</SecondaryButton>}
-            {can('vehicle.change_status') && <SecondaryButton onClick={() => setDialog('transfer')}><ArrowRightLeft size={16} /> Trasladar de sede</SecondaryButton>}
-            {can('meter.record') && <SecondaryButton onClick={() => { setAxle('rear'); setDialog('tires'); }}><CircleDot size={16} /> Cambio de llantas</SecondaryButton>}
-            {can('vehicle.edit') && <SecondaryButton onClick={() => setDialog('criticality')}><ShieldAlert size={16} /> Criticidad</SecondaryButton>}
-            {can('vehicle.edit') && <SecondaryButton onClick={() => setDialog('edit')}><Pencil size={16} /> Completar datos</SecondaryButton>}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+            <SecondaryButton
+              onClick={async () => {
+                try {
+                  await apiDownload(`/vehicles/${v.id}/sheet`, `Hoja_de_vida_${v.plate}.pdf`);
+                } catch (e) {
+                  setNotice(errorText(e));
+                }
+              }}
+            >
+              <FileDown size={16} /> Ficha en PDF
+            </SecondaryButton>
+            {!retired && can('work_request.create') && <Link href={`/avisos?vehiculo=${v.id}`}><SecondaryButton className="border-danger/40 text-danger"><Megaphone size={16} /> Reportar falla</SecondaryButton></Link>}
+            {!retired && can('meter.record') && <SecondaryButton onClick={() => setDialog('reading')}><Gauge size={16} /> Registrar km</SecondaryButton>}
+            {!retired && can('vehicle.change_status') && <SecondaryButton onClick={() => setDialog('status')}><Truck size={16} /> Cambiar estado</SecondaryButton>}
+            {!retired && can('vehicle.change_status') && <SecondaryButton onClick={() => setDialog('transfer')}><ArrowRightLeft size={16} /> Trasladar de sede</SecondaryButton>}
+            {!retired && can('meter.record') && <SecondaryButton onClick={() => { setAxle('rear'); setDialog('tires'); }}><CircleDot size={16} /> Cambio de llantas</SecondaryButton>}
+            {!retired && can('vehicle.edit') && <SecondaryButton onClick={() => setDialog('criticality')}><ShieldAlert size={16} /> Criticidad</SecondaryButton>}
+            {!retired && can('vehicle.edit') && <SecondaryButton onClick={() => setDialog('edit')}><Pencil size={16} /> Completar datos</SecondaryButton>}
+        </div>
       </Card>
 
       {notice && <Alert tone="ok">{notice}</Alert>}
@@ -195,6 +205,8 @@ export default function VehiclePage() {
       )}
 
       <div className="grid gap-5 lg:grid-cols-2">
+        <RegistrationCard vehicleId={v.id} registration={v.attributes?.registration} ownership={v.ownership} canEdit={can('vehicle.edit')} onSaved={done} />
+
         {/* Datos generales */}
         <Card>
           <h2 className="mb-2 flex items-center gap-2 font-semibold"><Truck size={18} /> Datos generales</h2>

@@ -15,7 +15,8 @@
     "prisma:seed": "ts-node --transpile-only prisma/seed/seed.ts",
     "fleet:import": "ts-node --transpile-only scripts/import-fleet.ts",
     "history:import": "ts-node --transpile-only scripts/import-history.ts",
-    "availability:import": "ts-node --transpile-only scripts/import-availability.ts"
+    "availability:import": "ts-node --transpile-only scripts/import-availability.ts",
+    "registrations:import": "ts-node --transpile-only scripts/import-registrations.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed/seed.ts"
@@ -28,6 +29,7 @@
     "@types/multer": "^2.3.0",
     "@types/node": "^22",
     "@types/nodemailer": "^8.0.2",
+    "@types/pdfkit": "^0.17.7",
     "@types/supertest": "^7.2.1",
     "jest": "^29",
     "pino-pretty": "^13.2.0",
@@ -50,6 +52,7 @@
     "exceljs": "^4.4.0",
     "nestjs-pino": "^4.6.1",
     "nodemailer": "^6.10.1",
+    "pdfkit": "0.20.2",
     "pino-http": "^10.5.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",

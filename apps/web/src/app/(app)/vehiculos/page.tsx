@@ -1,10 +1,10 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, FileSpreadsheet, Search } from 'lucide-react';
+import { AlertTriangle, FileDown, FileSpreadsheet, Search } from 'lucide-react';
 import { Badge, Card, CriticalityBadge, Progress, SecondaryButton } from '@/components/ui';
 import { useSession } from '@/lib/session';
-import { api } from '@/lib/api';
+import { api, apiDownload, ApiError } from '@/lib/api';
 import { STATUS_LABEL, STATUS_TONE, daysUntil, shortDay, km, type VehicleSummary } from '@/lib/fleet';
 import type { VehicleStatus } from '@cmms/shared';
 
@@ -35,6 +35,7 @@ export default function FleetPage() {
   const [q, setQ] = useState('');
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   useEffect(() => {
     void api<Site[]>('/sites').then(setSites).catch(() => undefined);
@@ -69,9 +70,28 @@ export default function FleetPage() {
           <h1 className="text-2xl font-bold">Flota</h1>
           <p className="text-muted">Hoja de vida, estado y kilometraje de cada vehículo.</p>
         </div>
-        {can('vehicle.edit') && (
-          <Link href="/vehiculos/importar"><SecondaryButton><FileSpreadsheet size={16} /> Plantilla Excel</SecondaryButton></Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <SecondaryButton
+            disabled={pdfBusy}
+            title={site ? 'Hojas de vida de la sede seleccionada' : 'Hojas de vida de toda la flota activa'}
+            onClick={async () => {
+              setPdfBusy(true);
+              setError(null);
+              try {
+                await apiDownload(`/vehicle-sheets${site ? `?site=${site}` : ''}`, 'Hojas_de_vida_flota.pdf');
+              } catch (e) {
+                setError(e instanceof ApiError ? e.message : 'No fue posible generar el PDF');
+              } finally {
+                setPdfBusy(false);
+              }
+            }}
+          >
+            <FileDown size={16} /> {pdfBusy ? 'Generando…' : `Fichas en PDF${site ? ` (${sites.find((x) => x.code === site)?.name ?? site})` : ''}`}
+          </SecondaryButton>
+          {can('vehicle.edit') && (
+            <Link href="/vehiculos/importar"><SecondaryButton><FileSpreadsheet size={16} /> Plantilla Excel</SecondaryButton></Link>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

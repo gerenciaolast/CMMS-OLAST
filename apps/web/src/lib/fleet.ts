@@ -85,7 +85,7 @@ export interface VehicleDetail extends VehicleSummary {
   inServiceDate: string | null;
   odometerOffset: number;
   criticalityScore: { operationalImpact: number; safety: number; repairCost: number; usage: number; score: number } | null;
-  attributes: { tires?: { frontSize?: string; frontQty?: number; rearSize?: string; rearQty?: number; brand?: string; loadIndex?: number } };
+  attributes: { tires?: { frontSize?: string; frontQty?: number; rearSize?: string; rearQty?: number; brand?: string; loadIndex?: number }; registration?: Registration };
   readings: { id: string; value: number; accumulatedValue: number; readAt: string; source: string; isFlagged: boolean; flagReason: string | null }[];
   statusLog: { id: string; status: VehicleStatus; reason: string | null; startedAt: string; endedAt: string | null; source: string }[];
   documents: { id: string; number: string | null; issuer: string | null; issuedAt: string | null; expiresAt: string | null; documentType: { code: string; name: string; isBlocking: boolean } }[];
@@ -98,3 +98,13 @@ export const day = (s: string | null | undefined) =>
 export const shortDay = (s: string | null | undefined) =>
   s ? new Date(s).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }) : '—';
 export const daysUntil = (s: string) => Math.ceil((new Date(s).getTime() - Date.now()) / 86_400_000);
+
+/** Licencia de tránsito (tarjeta de propiedad). */
+export interface Registration {
+  licenseNumber?: string | null; cardNumber?: string | null; make?: string | null; line?: string | null; year?: number | null;
+  displacementCc?: number | null; color?: string | null; serviceType?: string | null; vehicleClass?: string | null; bodyType?: string | null;
+  fuel?: string | null; capacity?: string | null; engineNumber?: string | null; vin?: string | null; serialNumber?: string | null;
+  chassisNumber?: string | null; ownerName?: string | null; ownerId?: string | null; powerHp?: number | null; importDeclaration?: string | null;
+  importDate?: string | null; doors?: number | null; ownershipLimitation?: string | null; armor?: string | null; registeredAt?: string | null;
+  issuedAt?: string | null; authority?: string | null; reviewNotes?: string[]; updatedAt?: string;
+}
